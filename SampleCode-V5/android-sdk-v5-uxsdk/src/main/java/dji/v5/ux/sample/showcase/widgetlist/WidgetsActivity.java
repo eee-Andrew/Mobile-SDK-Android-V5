@@ -99,6 +99,7 @@ import dji.v5.ux.core.widget.useraccount.UserAccountLoginWidget;
 import dji.v5.ux.core.widget.verticalvelocity.VerticalVelocityWidget;
 import dji.v5.ux.core.widget.videosignal.VideoSignalWidget;
 import dji.v5.ux.core.widget.vps.VPSWidget;
+import dji.v5.ux.core.widget.laserrange.LaserRangeWidget;
 import dji.v5.ux.flight.flightparam.DistanceLimitWidget;
 import dji.v5.ux.flight.flightparam.FlightModeWidget;
 import dji.v5.ux.flight.flightparam.LedWidget;
@@ -237,6 +238,7 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_user_account_login_widget_title, new WidgetViewHolder<>(UserAccountLoginWidget.class,
                 240, 60)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vertical_velocity_widget_title, new WidgetViewHolder<>(VerticalVelocityWidget.class)));
+        widgetListItems.add(new WidgetListItem(R.string.uxsdk_laser_range_widget_title, new WidgetViewHolder<>(dji.v5.ux.core.widget.laserrange.LaserRangeWidget.class)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vision_widget_title, new WidgetViewHolder<>(PerceptionStateWidget.class)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_video_signal_widget_title, new WidgetViewHolder<>(VideoSignalWidget.class, 86, 50)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vps_widget_title, new WidgetViewHolder<>(VPSWidget.class)));
