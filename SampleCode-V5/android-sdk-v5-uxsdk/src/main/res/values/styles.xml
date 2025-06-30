@@ -197,6 +197,10 @@
         <item name="uxsdk_label_string">@string/uxsdk_vertical_velocity_title</item>
     </style>
 
+    <style name="UXSDKLaserRangeWidget">
+        <item name="uxsdk_label_string">@string/uxsdk_laser_range_title</item>
+    </style>
+
     <style name="UXSDKVPSWidget">
         <item name="uxsdk_label_string">@string/uxsdk_vps_title</item>
     </style>
