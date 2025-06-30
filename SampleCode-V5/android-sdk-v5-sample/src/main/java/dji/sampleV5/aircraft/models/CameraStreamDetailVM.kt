@@ -43,6 +43,7 @@ class CameraStreamDetailVM : DJIViewModel() {
     private val _visionAssistViewDirection = MutableLiveData(VisionAssistDirection.UNKNOWN)
     private val _visionAssistViewDirectionRange = MutableLiveData<List<VisionAssistDirection>>(ArrayList())
     val cameraStreamEnableMap = MutableLiveData(emptyMap<ComponentIndexType, Boolean>())
+    private val _laserMeasureDistance = MutableLiveData<Double>()
 
     private var cameraIndex = ComponentIndexType.UNKNOWN
     private var cameraType = ""
@@ -100,6 +101,7 @@ class CameraStreamDetailVM : DJIViewModel() {
         MediaDataCenter.getInstance().cameraStreamManager.removeVisionAssistStatusListener(visionAssistStatusListener)
         KeyManager.getInstance().cancelListen(this)
         doStopDownloadStreamToLocal()
+        CameraKey.KeyLaserMeasureEnabled.create(cameraIndex).set(false)
     }
 
     fun setCameraIndex(cameraIndex: ComponentIndexType) {
@@ -115,6 +117,7 @@ class CameraStreamDetailVM : DJIViewModel() {
         listenAvailableLens()
         listenCurrentLens()
         listenVisionAssistStatus()
+        listenLaserMeasureInfo()
         MediaDataCenter.getInstance().cameraStreamManager.addAvailableCameraUpdatedListener(availableCameraUpdatedListener)
     }
 
@@ -177,6 +180,18 @@ class CameraStreamDetailVM : DJIViewModel() {
 
     private fun listenVisionAssistStatus() {
         MediaDataCenter.getInstance().cameraStreamManager.addVisionAssistStatusListener(visionAssistStatusListener)
+    }
+
+    private fun listenLaserMeasureInfo() {
+        if (cameraIndex == ComponentIndexType.UNKNOWN) {
+            return
+        }
+        // Enable laser measure module
+        CameraKey.KeyLaserMeasureEnabled.create(cameraIndex).set(true)
+        // Listen distance info
+        CameraKey.KeyLaserMeasureInformation.create(cameraIndex).listen(this) {
+            _laserMeasureDistance.postValue(it?.distance ?: -1.0)
+        }
     }
 
     fun changeCameraLens(lensType: CameraVideoStreamSourceType) {
@@ -311,4 +326,7 @@ class CameraStreamDetailVM : DJIViewModel() {
 
     val visionAssistViewDirectionRange: LiveData<List<VisionAssistDirection>>
         get() = _visionAssistViewDirectionRange
+
+    val laserMeasureDistance: LiveData<Double>
+        get() = _laserMeasureDistance
 }

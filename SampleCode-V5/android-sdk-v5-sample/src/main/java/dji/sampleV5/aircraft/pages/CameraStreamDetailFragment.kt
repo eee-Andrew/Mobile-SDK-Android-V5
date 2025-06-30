@@ -62,6 +62,7 @@ class CameraStreamDetailFragment : DJIFragment() {
     private lateinit var cameraSurfaceView: SurfaceView
     private lateinit var btnDownloadYUV: Button
     private lateinit var tvCameraName: TextView
+    private lateinit var tvLaserDistance: TextView
     private lateinit var btnCloseOrOpen: Button
     private lateinit var btnCloseOrOpenVisionAssist: Button
     private lateinit var btnBeginDownloadStream: Button
@@ -108,6 +109,7 @@ class CameraStreamDetailFragment : DJIFragment() {
         cameraSurfaceView = view.findViewById(R.id.sv_camera)
         btnDownloadYUV = view.findViewById(R.id.btn_download_yuv)
         tvCameraName = view.findViewById(R.id.tv_camera_name)
+        tvLaserDistance = view.findViewById(R.id.tv_laser_distance)
         btnCloseOrOpen = view.findViewById(R.id.btn_close_or_open)
         btnCloseOrOpenVisionAssist = view.findViewById(R.id.btn_vision_assist_close_or_open)
         btnBeginDownloadStream = view.findViewById(R.id.btn_begin_download_stream)
@@ -217,6 +219,16 @@ class CameraStreamDetailFragment : DJIFragment() {
 
         viewModel.cameraName.observe(viewLifecycleOwner) { name ->
             tvCameraName.text = name
+        }
+
+        viewModel.laserMeasureDistance.observe(viewLifecycleOwner) {
+            val distance = it ?: -1.0
+            val text = if (distance >= 0) {
+                String.format("Laser Distance: %.1f m", distance)
+            } else {
+                "Laser Distance: --"
+            }
+            tvLaserDistance.text = text
         }
 
         viewModel.isVisionAssistEnabled.observe(viewLifecycleOwner) {
