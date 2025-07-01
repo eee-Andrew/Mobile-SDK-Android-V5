@@ -99,6 +99,7 @@ import dji.v5.ux.core.widget.useraccount.UserAccountLoginWidget;
 import dji.v5.ux.core.widget.verticalvelocity.VerticalVelocityWidget;
 import dji.v5.ux.core.widget.videosignal.VideoSignalWidget;
 import dji.v5.ux.core.widget.vps.VPSWidget;
+import dji.v5.ux.core.widget.laserrange.LaserRangeWidget;
 import dji.v5.ux.flight.flightparam.DistanceLimitWidget;
 import dji.v5.ux.flight.flightparam.FlightModeWidget;
 import dji.v5.ux.flight.flightparam.LedWidget;
@@ -124,6 +125,7 @@ import dji.v5.ux.visualcamera.storage.CameraConfigStorageWidget;
 import dji.v5.ux.visualcamera.wb.CameraConfigWBWidget;
 import dji.v5.ux.visualcamera.zoom.FocalZoomWidget;
 import dji.v5.ux.warning.DeviceHealthAndStatusWidget;
+import dji.v5.ux.sample.util.PanAndZoomUtil;
 
 /**
  * Displays a list of widget names. Clicking on a widget name will show that widget in a separate
@@ -137,6 +139,8 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
         super.onCreate(savedInstanceState);
         populateList();
         setContentView(R.layout.uxsdk_activity_widgets);
+
+        PanAndZoomUtil.start();
 
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN |
@@ -237,6 +241,7 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_user_account_login_widget_title, new WidgetViewHolder<>(UserAccountLoginWidget.class,
                 240, 60)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vertical_velocity_widget_title, new WidgetViewHolder<>(VerticalVelocityWidget.class)));
+        widgetListItems.add(new WidgetListItem(R.string.uxsdk_laser_range_widget_title, new WidgetViewHolder<>(dji.v5.ux.core.widget.laserrange.LaserRangeWidget.class)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vision_widget_title, new WidgetViewHolder<>(PerceptionStateWidget.class)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_video_signal_widget_title, new WidgetViewHolder<>(VideoSignalWidget.class, 86, 50)));
         widgetListItems.add(new WidgetListItem(R.string.uxsdk_vps_widget_title, new WidgetViewHolder<>(VPSWidget.class)));
@@ -317,5 +322,11 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
         transaction.replace(R.id.fragment_container, newFragment);
         transaction.addToBackStack(null);
         transaction.commit();
+    }
+
+    @Override
+    protected void onDestroy() {
+        PanAndZoomUtil.stop();
+        super.onDestroy();
     }
 }

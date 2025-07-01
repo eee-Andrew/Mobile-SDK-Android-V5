@@ -73,6 +73,7 @@
     <string name="uxsdk_vps_title">VPS</string>
     <string name="uxsdk_horizontal_velocity_title">H.S.</string>
     <string name="uxsdk_vertical_velocity_title">V.S.</string>
+    <string name="uxsdk_laser_range_title">Laser</string>
 
     <string name="uxsdk_video_time_hours">%1$02d:%2$02d:%3$02d</string>
     <string name="uxsdk_video_time">%1$02d:%2$02d</string>
@@ -446,6 +447,7 @@
     <string name="uxsdk_top_bar_panel_title">Top Bar Panel</string>
     <string name="uxsdk_user_account_login_widget_title">User Account Login Widget</string>
     <string name="uxsdk_vertical_velocity_widget_title">Vertical Velocity Widget</string>
+    <string name="uxsdk_laser_range_widget_title">Laser Range Widget</string>
     <string name="uxsdk_vision_widget_title">Vision Widget</string>
     <string name="uxsdk_vps_widget_title">VPS Widget</string>
     <string name="uxsdk_flight_mode_widget_title">Flight Mode Widget</string>
