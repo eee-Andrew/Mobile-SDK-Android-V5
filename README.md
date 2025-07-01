@@ -84,6 +84,7 @@ Sample module:
 
 - sample：Compile aircraft sample App, which depends on uxsdk.
 - Laser range sample: open the **Laser Range Widget** from the widget list to display the H20 camera's range finder distance.
+- H20 camera preview: from the sample's main screen choose **Multi-Video Decoding (CameraStreamManager - New)** to watch the live camera feed while the gimbal pans and zooms.
 
 ## Integration
 
