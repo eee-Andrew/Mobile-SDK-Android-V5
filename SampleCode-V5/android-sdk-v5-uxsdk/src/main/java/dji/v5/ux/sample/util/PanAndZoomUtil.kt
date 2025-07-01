@@ -21,6 +21,7 @@ object PanAndZoomUtil {
 
     /** Start rotating the gimbal from -50° to +50° in 5° steps every 3 seconds.
      *  Each step increases the zoom ratio by 2. */
+    @JvmStatic
     fun start() {
         val rotateKey = KeyTools.createKey(GimbalKey.KeyRotateByAngle, ComponentIndexType.LEFT_OR_MAIN)
         val zoomKey = KeyTools.createCameraKey(
@@ -52,6 +53,7 @@ object PanAndZoomUtil {
     }
 
     /** Stop the pan and zoom routine. */
+    @JvmStatic
     fun stop() {
         disposables.clear()
     }
