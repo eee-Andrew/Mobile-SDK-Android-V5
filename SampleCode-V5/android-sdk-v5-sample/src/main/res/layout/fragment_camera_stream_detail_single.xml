@@ -26,6 +26,17 @@
             app:layout_constraintStart_toStartOf="@id/ll_live_info_layout"
             app:layout_constraintStart_toEndOf="@id/ll_live_info_layout"/>
 
+        <TextView
+            android:id="@+id/tv_laser_distance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textColor="@color/white"
+            android:text="Laser Distance: --"
+            android:textSize="15sp"
+            app:layout_constraintTop_toBottomOf="@id/tv_camera_name"
+            app:layout_constraintStart_toStartOf="@id/tv_camera_name"/>
+
         <androidx.core.widget.NestedScrollView
             android:id="@+id/ll_live_info_layout"
             android:layout_width="wrap_content"
