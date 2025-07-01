@@ -2,9 +2,9 @@ package dji.v5.ux.sample.util
 
 import dji.sdk.keyvalue.key.CameraKey
 import dji.sdk.keyvalue.key.GimbalKey
-import dji.sdk.keyvalue.key.KeyManager
+import dji.v5.manager.KeyManager
 import dji.sdk.keyvalue.key.KeyTools
-import dji.sdk.keyvalue.value.camera.CameraLensType
+import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotationMode
@@ -39,9 +39,9 @@ object PanAndZoomUtil {
                 .observeOn(Schedulers.io())
                 .subscribe {
                     val rotation = GimbalAngleRotation().apply {
-                        setMode(GimbalAngleRotationMode.ABSOLUTE_ANGLE)
-                        setYaw(yaw.toDouble())
-                        setDuration(2.0)
+                        mode = GimbalAngleRotationMode.ABSOLUTE_ANGLE
+                        this.yaw = yaw.toDouble()
+                        duration = 2.0
                     }
                     KeyManager.getInstance().performAction(rotateKey, rotation, null)
                     KeyManager.getInstance().setValue(zoomKey, zoom, null)
