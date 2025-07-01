@@ -3,6 +3,8 @@ package dji.sampleV5.aircraft
 import android.app.Application
 import dji.sampleV5.aircraft.models.MSDKManagerVM
 import dji.sampleV5.aircraft.models.globalViewModels
+import dji.v5.ux.sample.util.PanAndZoomUtil
+import dji.v5.ux.sample.util.RtspStreamUtil
 
 /**
  * Class Description
@@ -21,6 +23,12 @@ open class DJIApplication : Application() {
 
         // Ensure initialization is called first
         msdkManagerVM.initMobileSDK(this)
+    }
+
+    override fun onTerminate() {
+        RtspStreamUtil.stop()
+        PanAndZoomUtil.stop()
+        super.onTerminate()
     }
 
 }
