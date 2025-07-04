@@ -27,6 +27,7 @@ object RangeControlServer {
     private var server: ServerSocket? = null
 
     @JvmStatic
+    @JvmOverloads
     fun start(port: Int = 8989) {
         if (server != null) return
         server = ServerSocket(port)
