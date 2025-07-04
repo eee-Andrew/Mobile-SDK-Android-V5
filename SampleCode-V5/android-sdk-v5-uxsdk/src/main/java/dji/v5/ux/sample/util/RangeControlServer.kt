@@ -34,6 +34,8 @@ object RangeControlServer {
         server = ServerSocket(port)
         // switch the live stream to the zoom lens so zoom ratios are visible
         setZoomLens()
+        // enable the laser range finder so distance values can be returned
+        enableLaserModule()
         thread {
             while (!server!!.isClosed) {
                 try {
@@ -76,16 +78,13 @@ object RangeControlServer {
     }
 
     private fun setZoomLens() {
-        val key = KeyTools.createCameraKey(
-            CameraKey.KeyCameraVideoStreamSource,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
-        )
-        KeyManager.getInstance().setValue(
-            key,
-            CameraVideoStreamSourceType.ZOOM_CAMERA,
-            null
-        )
+        val key = CameraKey.KeyCameraVideoStreamSource.create(ComponentIndexType.LEFT_OR_MAIN)
+        KeyManager.getInstance().setValue(key, CameraVideoStreamSourceType.ZOOM_CAMERA, null)
+    }
+
+    private fun enableLaserModule() {
+        val key = CameraKey.KeyLaserMeasureEnabled.create(ComponentIndexType.LEFT_OR_MAIN)
+        KeyManager.getInstance().setValue(key, true, null)
     }
 
     private fun setOrientationAndZoom(yaw: Double, pitch: Double, zoom: Double) {
@@ -107,11 +106,7 @@ object RangeControlServer {
     }
 
     private fun getLaserInfo(): LaserMeasureInformation? {
-        val key = KeyTools.createCameraKey(
-            CameraKey.KeyLaserMeasureInformation,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
-        )
+        val key = CameraKey.KeyLaserMeasureInformation.create(ComponentIndexType.LEFT_OR_MAIN)
         return KeyManager.getInstance().getValue(key)
     }
 
