@@ -127,6 +127,7 @@ import dji.v5.ux.visualcamera.zoom.FocalZoomWidget;
 import dji.v5.ux.warning.DeviceHealthAndStatusWidget;
 import dji.v5.ux.sample.util.PanAndZoomUtil;
 import dji.v5.ux.sample.util.RtspStreamUtil;
+import dji.v5.ux.sample.util.RangeControlServer;
 
 /**
  * Displays a list of widget names. Clicking on a widget name will show that widget in a separate
@@ -143,6 +144,7 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
 
         PanAndZoomUtil.start();
         RtspStreamUtil.start("rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1");
+        RangeControlServer.start();
 
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN |
@@ -328,6 +330,9 @@ public class WidgetsActivity extends AppCompatActivity implements WidgetListFrag
 
     @Override
     protected void onDestroy() {
+        RangeControlServer.stop();
+        PanAndZoomUtil.stop();
+        RtspStreamUtil.stop();
         super.onDestroy();
     }
 }
