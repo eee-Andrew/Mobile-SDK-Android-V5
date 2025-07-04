@@ -78,12 +78,20 @@ object RangeControlServer {
     }
 
     private fun setZoomLens() {
-        val key = CameraKey.KeyCameraVideoStreamSource.create(ComponentIndexType.LEFT_OR_MAIN)
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyCameraVideoStreamSource,
+            ComponentIndexType.LEFT_OR_MAIN,
+            CameraLensType.CAMERA_LENS_ZOOM
+        )
         KeyManager.getInstance().setValue(key, CameraVideoStreamSourceType.ZOOM_CAMERA, null)
     }
 
     private fun enableLaserModule() {
-        val key = CameraKey.KeyLaserMeasureEnabled.create(ComponentIndexType.LEFT_OR_MAIN)
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyLaserMeasureEnabled,
+            ComponentIndexType.LEFT_OR_MAIN,
+            CameraLensType.CAMERA_LENS_ZOOM
+        )
         KeyManager.getInstance().setValue(key, true, null)
     }
 
@@ -106,7 +114,11 @@ object RangeControlServer {
     }
 
     private fun getLaserInfo(): LaserMeasureInformation? {
-        val key = CameraKey.KeyLaserMeasureInformation.create(ComponentIndexType.LEFT_OR_MAIN)
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyLaserMeasureInformation,
+            ComponentIndexType.LEFT_OR_MAIN,
+            CameraLensType.CAMERA_LENS_ZOOM
+        )
         return KeyManager.getInstance().getValue(key)
     }
 
