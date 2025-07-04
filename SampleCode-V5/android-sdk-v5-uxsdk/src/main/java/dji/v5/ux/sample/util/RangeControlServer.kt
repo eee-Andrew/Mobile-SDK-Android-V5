@@ -76,9 +76,11 @@ object RangeControlServer {
     }
 
     private fun setZoomLens() {
-        CameraKey.KeyCameraVideoStreamSource
-            .create(ComponentIndexType.LEFT_OR_MAIN)
-            .set(CameraVideoStreamSourceType.ZOOM_CAMERA)
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyCameraVideoStreamSource,
+            ComponentIndexType.LEFT_OR_MAIN
+        )
+        KeyManager.getInstance().setValue(key, CameraVideoStreamSourceType.ZOOM_CAMERA, null)
     }
 
     private fun setOrientationAndZoom(yaw: Double, pitch: Double, zoom: Double) {
