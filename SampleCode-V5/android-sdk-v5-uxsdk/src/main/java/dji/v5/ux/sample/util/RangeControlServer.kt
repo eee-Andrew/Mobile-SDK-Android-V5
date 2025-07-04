@@ -9,6 +9,7 @@ import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotationMode
 import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
+import dji.sdk.keyvalue.value.camera.CameraVideoStreamSourceType
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -31,6 +32,8 @@ object RangeControlServer {
     fun start(port: Int = 8989) {
         if (server != null) return
         server = ServerSocket(port)
+        // switch the live stream to the zoom lens so zoom ratios are visible
+        setZoomLens()
         thread {
             while (!server!!.isClosed) {
                 try {
@@ -70,6 +73,18 @@ object RangeControlServer {
                 }
             }
         }
+    }
+
+    private fun setZoomLens() {
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyCameraVideoStreamSource,
+            ComponentIndexType.LEFT_OR_MAIN
+        )
+        KeyManager.getInstance().setValue(
+            key,
+            CameraVideoStreamSourceType.ZOOM_CAMERA,
+            null
+        )
     }
 
     private fun setOrientationAndZoom(yaw: Double, pitch: Double, zoom: Double) {
