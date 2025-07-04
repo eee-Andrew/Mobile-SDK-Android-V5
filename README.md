@@ -86,7 +86,7 @@ Sample module:
 - Laser range sample: open the **Laser Range Widget** from the widget list to display the H20 camera's range finder distance.
 - H20 camera preview: from the sample's main screen choose **Multi-Video Decoding (CameraStreamManager - New)** to watch the live camera feed while the gimbal pans and zooms.
 - RTSP streaming: the application starts an RTSP server at `rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1` so you can view the feed remotely while the camera pans and zooms.
-- Remote control server: the app listens on TCP port `8989` to receive commands and report range finder distance and GPS. An example Python client is available in `scripts/control_camera_client.py`.
+- Remote control server: the app listens on TCP port `8989` to receive commands and report range finder distance and GPS. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
 
 ## Integration
 
