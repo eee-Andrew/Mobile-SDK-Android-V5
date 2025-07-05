@@ -34,7 +34,7 @@ class LaserRangeWidgetModel(
 
     override fun inSetup() {
         bindDataProcessor(
-            KeyTools.createCameraKey(CameraKey.KeyLaserMeasureInformation, cameraIndex, lensType),
+            KeyTools.createCameraKey(CameraKey.KeyLaserMeasureInformation, cameraIndex),
             laserInfoProcessor
         )
     }

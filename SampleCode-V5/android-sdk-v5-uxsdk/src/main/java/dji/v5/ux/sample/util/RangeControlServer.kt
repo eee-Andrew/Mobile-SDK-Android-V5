@@ -89,8 +89,7 @@ object RangeControlServer {
     private fun enableLaserModule() {
         val key = KeyTools.createCameraKey(
             CameraKey.KeyLaserMeasureEnabled,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
+            ComponentIndexType.LEFT_OR_MAIN
         )
         KeyManager.getInstance().setValue(key, true, null)
     }
@@ -116,8 +115,7 @@ object RangeControlServer {
     private fun getLaserInfo(): LaserMeasureInformation? {
         val key = KeyTools.createCameraKey(
             CameraKey.KeyLaserMeasureInformation,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
+            ComponentIndexType.LEFT_OR_MAIN
         )
         return KeyManager.getInstance().getValue(key)
     }
