@@ -43,8 +43,8 @@ object RangeControlServer {
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
         // listen for laser measurement updates
-        KeyManager.getInstance().listen(laserInfoKey, this) { value: LaserMeasureInformation? ->
-            laserInfo = value
+        KeyManager.getInstance().listen(laserInfoKey, this) { _, newValue: LaserMeasureInformation? ->
+            laserInfo = newValue
         }
         thread {
             while (!server!!.isClosed) {
