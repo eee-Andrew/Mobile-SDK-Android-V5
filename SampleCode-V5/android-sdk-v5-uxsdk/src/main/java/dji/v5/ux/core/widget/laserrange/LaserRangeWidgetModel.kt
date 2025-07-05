@@ -60,8 +60,13 @@ class LaserRangeWidgetModel(
             return
         }
 
-        val info = laserInfoProcessor.value
-        if (info.distance > 0) {
+        val key = KeyTools.createCameraKey(
+            CameraKey.KeyLaserMeasureInformation,
+            cameraIndex,
+            lensType
+        )
+        val info = KeyManager.getInstance().getValue<LaserMeasureInformation>(key)
+        if (info != null && info.distance > 0) {
             rangeStateProcessor.onNext(RangeState.CurrentRange(info.distance))
         } else {
             rangeStateProcessor.onNext(RangeState.RangeUnavailable)
