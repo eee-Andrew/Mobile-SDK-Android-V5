@@ -85,7 +85,11 @@ object RangeControlServer {
                             val loc = info?.location3D
                             val lat = loc?.latitude ?: 0.0
                             val lon = loc?.longitude ?: 0.0
-                            writer.write("RANGE $distance LAT $lat LON $lon\n")
+                            val alt = loc?.altitude ?: 0.0
+                            val point = info?.targetPoint
+                            val tx = point?.x ?: 0.0
+                            val ty = point?.y ?: 0.0
+                            writer.write("RANGE $distance LAT $lat LON $lon ALT $alt TX $tx TY $ty\n")
                             writer.flush()
                         }
                     }

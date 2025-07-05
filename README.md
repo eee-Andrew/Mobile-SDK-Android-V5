@@ -87,7 +87,7 @@ Sample module:
  - H20 camera preview: from the sample's main screen choose **Multi-Video Decoding (CameraStreamManager - New)** to watch the live camera feed.
 - RTSP streaming: the application starts an RTSP server at `rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1` so you can view the feed remotely. Control the gimbal and zoom via the TCP server.
   The stream uses the camera's zoom lens so changes to zoom ratio are reflected in the video.
- - Remote control server: the app listens on TCP port `8989` to receive commands and report range finder distance and GPS. The range finder value is polled every half second so GET commands always return the latest measurement. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
+ - Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
 
 ## Integration
 
