@@ -32,6 +32,7 @@ object RangeControlServer {
         ComponentIndexType.LEFT_OR_MAIN,
         CameraLensType.CAMERA_LENS_ZOOM
     )
+    private var pollingThread: Thread? = null
 
     @JvmStatic
     @JvmOverloads
@@ -42,9 +43,15 @@ object RangeControlServer {
         setZoomLens()
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
-        // listen for laser measurement updates
-        KeyManager.getInstance().listen(laserInfoKey, this) { _, newValue: LaserMeasureInformation? ->
-            laserInfo = newValue
+        // poll the laser measurement so latest values are available
+        pollingThread = thread(start = true) {
+            while (!server!!.isClosed) {
+                val info = KeyManager.getInstance().getValue<LaserMeasureInformation>(laserInfoKey)
+                if (info != null) {
+                    laserInfo = info
+                }
+                Thread.sleep(500)
+            }
         }
         thread {
             while (!server!!.isClosed) {
@@ -129,7 +136,8 @@ object RangeControlServer {
 
     @JvmStatic
     fun stop() {
-        KeyManager.getInstance().cancelListen(laserInfoKey, this)
+        pollingThread?.interrupt()
+        pollingThread = null
         try {
             server?.close()
         } catch (_: Exception) {
