@@ -24,7 +24,7 @@ class LaserRangeWidgetModel(
     private var cameraIndex = ComponentIndexType.LEFT_OR_MAIN
     private var lensType = CameraLensType.CAMERA_LENS_ZOOM
 
-    private val laserInfoProcessor = DataProcessor.create<LaserMeasureInformation?>(null)
+    private val laserInfoProcessor = DataProcessor.create(LaserMeasureInformation())
     private val rangeStateProcessor = DataProcessor.create<RangeState>(RangeState.ProductDisconnected)
 
     /**
@@ -61,7 +61,7 @@ class LaserRangeWidgetModel(
         }
 
         val info = laserInfoProcessor.value
-        if (info != null && info.distance > 0) {
+        if (info.distance > 0) {
             rangeStateProcessor.onNext(RangeState.CurrentRange(info.distance))
         } else {
             rangeStateProcessor.onNext(RangeState.RangeUnavailable)
