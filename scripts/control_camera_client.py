@@ -17,6 +17,20 @@ RTSP_URL = "rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1"
 model = YOLO("best.pt")
 
 
+def parse_response(resp: str) -> dict:
+    """Parse server response into a dictionary."""
+    tokens = resp.split()
+    data = {}
+    for i in range(0, len(tokens) - 1, 2):
+        key = tokens[i]
+        try:
+            value = float(tokens[i + 1])
+        except ValueError:
+            continue
+        data[key] = value
+    return data
+
+
 def main():
     last_index = None
     last_resp = ""
@@ -41,8 +55,13 @@ def main():
                     if res.names[int(cls_id)] == "truck":
                         sock.sendall(b"GET\n")
                         resp = sock.recv(1024).decode().strip()
+                        data = parse_response(resp)
                         last_index = idx
                         last_resp = resp
+                        print(
+                            f"Detected truck: range {data.get('RANGE', -1)} m "
+                            f"lat {data.get('LAT', 0)} lon {data.get('LON', 0)}"
+                        )
                         detected = True
                         break
                 cv2.imshow("H20 Stream", frame)
@@ -58,7 +77,11 @@ def main():
         cv2.destroyAllWindows()
         sock.close()
         if last_index is not None:
-            print(f"Last detection index {last_index}: {last_resp}")
+            data = parse_response(last_resp)
+            print(
+                f"Last detection index {last_index}: range {data.get('RANGE', -1)} m "
+                f"lat {data.get('LAT', 0)} lon {data.get('LON', 0)}"
+            )
         else:
             print("No trucks detected")
 
