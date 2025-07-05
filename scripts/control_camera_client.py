@@ -1,6 +1,7 @@
 import socket
-import threading
+import time
 import cv2
+from ultralytics import YOLO
 
 # Example positions as (zoom, pitch, yaw)
 POSITIONS = [
@@ -9,43 +10,57 @@ POSITIONS = [
     (5, 14, 11),
 ]
 
-HOST = '192.168.0.161'  # IP of the RC Plus device
+HOST = "192.168.0.161"  # IP of the RC Plus device
 PORT = 8989
 RTSP_URL = "rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1"
 
-
-def _control_loop(sock):
-    """Send orientation/zoom commands and poll range data."""
-    for zoom, pitch, yaw in POSITIONS:
-        cmd = f"SET {yaw} {pitch} {zoom}\n"
-        sock.sendall(cmd.encode())
-        for _ in range(3):
-            sock.sendall(b"GET\n")
-            resp = sock.recv(1024).decode().strip()
-            print("Response:", resp)
+model = YOLO("best.pt")
 
 
-def _stream_loop():
+def main():
+    last_index = None
+    last_resp = ""
+    sock = socket.create_connection((HOST, PORT))
     cap = cv2.VideoCapture(RTSP_URL)
     if not cap.isOpened():
         print("Failed to open RTSP stream")
+        sock.close()
         return
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        cv2.imshow("H20 Stream", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-    cap.release()
-    cv2.destroyAllWindows()
-
-def main():
-    with socket.create_connection((HOST, PORT)) as sock:
-        control_thread = threading.Thread(target=_control_loop, args=(sock,), daemon=True)
-        control_thread.start()
-        _stream_loop()
-        control_thread.join()
+    try:
+        for idx, (zoom, pitch, yaw) in enumerate(POSITIONS):
+            cmd = f"SET {yaw} {pitch} {zoom}\n"
+            sock.sendall(cmd.encode())
+            time.sleep(0.5)
+            detected = False
+            for _ in range(30):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                res = model(frame, verbose=False)[0]
+                for cls_id in res.boxes.cls:
+                    if res.names[int(cls_id)] == "truck":
+                        sock.sendall(b"GET\n")
+                        resp = sock.recv(1024).decode().strip()
+                        last_index = idx
+                        last_resp = resp
+                        detected = True
+                        break
+                cv2.imshow("H20 Stream", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    detected = True
+                    break
+                if detected:
+                    break
+            if not detected:
+                print(f"No truck detected at index {idx}")
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        sock.close()
+        if last_index is not None:
+            print(f"Last detection index {last_index}: {last_resp}")
+        else:
+            print("No trucks detected")
 
 if __name__ == '__main__':
     main()
