@@ -6,6 +6,7 @@ import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
 import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.common.ComponentIndexType
 import dji.v5.ux.core.base.ICameraIndex
+import dji.v5.manager.KeyManager
 import dji.v5.ux.core.base.DJISDKModel
 import dji.v5.ux.core.base.WidgetModel
 import dji.v5.ux.core.communication.ObservableInMemoryKeyedStore
@@ -23,7 +24,7 @@ class LaserRangeWidgetModel(
     private var cameraIndex = ComponentIndexType.LEFT_OR_MAIN
     private var lensType = CameraLensType.CAMERA_LENS_ZOOM
 
-    private val laserInfoProcessor = DataProcessor.create(LaserMeasureInformation())
+    private val laserInfoProcessor = DataProcessor.create<LaserMeasureInformation?>(null)
     private val rangeStateProcessor = DataProcessor.create<RangeState>(RangeState.ProductDisconnected)
 
     /**
@@ -33,6 +34,16 @@ class LaserRangeWidgetModel(
         get() = rangeStateProcessor.toFlowable()
 
     override fun inSetup() {
+        // enable the laser module so measurements are available
+        KeyManager.getInstance().setValue(
+            KeyTools.createCameraKey(
+                CameraKey.KeyLaserMeasureEnabled,
+                cameraIndex,
+                lensType
+            ),
+            true,
+            null
+        )
         bindDataProcessor(
             KeyTools.createCameraKey(
                 CameraKey.KeyLaserMeasureInformation,
@@ -44,15 +55,16 @@ class LaserRangeWidgetModel(
     }
 
     override fun updateStates() {
-        if (productConnectionProcessor.value) {
-            val info = laserInfoProcessor.value
-            if (info.distance > 0) {
-                rangeStateProcessor.onNext(RangeState.CurrentRange(info.distance))
-            } else {
-                rangeStateProcessor.onNext(RangeState.RangeUnavailable)
-            }
-        } else {
+        if (!productConnectionProcessor.value) {
             rangeStateProcessor.onNext(RangeState.ProductDisconnected)
+            return
+        }
+
+        val info = laserInfoProcessor.value
+        if (info != null && info.distance > 0) {
+            rangeStateProcessor.onNext(RangeState.CurrentRange(info.distance))
+        } else {
+            rangeStateProcessor.onNext(RangeState.RangeUnavailable)
         }
     }
 
