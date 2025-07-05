@@ -26,6 +26,12 @@ import kotlin.concurrent.thread
  */
 object RangeControlServer {
     private var server: ServerSocket? = null
+    private var laserInfo: LaserMeasureInformation? = null
+    private val laserInfoKey = KeyTools.createCameraKey(
+        CameraKey.KeyLaserMeasureInformation,
+        ComponentIndexType.LEFT_OR_MAIN,
+        CameraLensType.CAMERA_LENS_ZOOM
+    )
 
     @JvmStatic
     @JvmOverloads
@@ -36,6 +42,10 @@ object RangeControlServer {
         setZoomLens()
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
+        // listen for laser measurement updates
+        KeyManager.getInstance().listen(laserInfoKey, this) { value: LaserMeasureInformation? ->
+            laserInfo = value
+        }
         thread {
             while (!server!!.isClosed) {
                 try {
@@ -114,16 +124,12 @@ object RangeControlServer {
     }
 
     private fun getLaserInfo(): LaserMeasureInformation? {
-        val key = KeyTools.createCameraKey(
-            CameraKey.KeyLaserMeasureInformation,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
-        )
-        return KeyManager.getInstance().getValue(key)
+        return laserInfo
     }
 
     @JvmStatic
     fun stop() {
+        KeyManager.getInstance().cancelListen(laserInfoKey, this)
         try {
             server?.close()
         } catch (_: Exception) {
