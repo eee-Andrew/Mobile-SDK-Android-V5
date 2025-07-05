@@ -2,7 +2,7 @@ import socket
 import threading
 import cv2
 
-# Example positions: (zoom, pitch, yaw)
+# Example positions as (zoom, pitch, yaw)
 POSITIONS = [
     (2, 10, 10),
     (3, 13, 14),
@@ -15,12 +15,14 @@ RTSP_URL = "rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1"
 
 
 def _control_loop(sock):
+    """Send orientation/zoom commands and poll range data."""
     for zoom, pitch, yaw in POSITIONS:
         cmd = f"SET {yaw} {pitch} {zoom}\n"
         sock.sendall(cmd.encode())
-        sock.sendall(b"GET\n")
-        resp = sock.recv(1024).decode().strip()
-        print("Response:", resp)
+        for _ in range(3):
+            sock.sendall(b"GET\n")
+            resp = sock.recv(1024).decode().strip()
+            print("Response:", resp)
 
 
 def _stream_loop():
