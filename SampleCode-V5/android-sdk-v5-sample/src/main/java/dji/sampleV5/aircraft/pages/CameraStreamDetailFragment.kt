@@ -110,6 +110,13 @@ class CameraStreamDetailFragment : DJIFragment() {
         btnDownloadYUV = view.findViewById(R.id.btn_download_yuv)
         tvCameraName = view.findViewById(R.id.tv_camera_name)
         tvLaserDistance = view.findViewById(R.id.tv_laser_distance)
+        // Only the H20 camera provides laser distance values. Hide this
+        // view when displaying other camera feeds such as FPV or the vision
+        // assist camera.
+        if (cameraIndex == ComponentIndexType.FPV ||
+            cameraIndex == ComponentIndexType.VISION_ASSIST) {
+            tvLaserDistance.visibility = View.GONE
+        }
         btnCloseOrOpen = view.findViewById(R.id.btn_close_or_open)
         btnCloseOrOpenVisionAssist = view.findViewById(R.id.btn_vision_assist_close_or_open)
         btnBeginDownloadStream = view.findViewById(R.id.btn_begin_download_stream)
