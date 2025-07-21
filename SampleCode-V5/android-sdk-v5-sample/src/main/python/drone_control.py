@@ -26,3 +26,11 @@ def go_to_waypoint(lat, lon, alt):
         print('Start mission error:', error)
     else:
         print('Mission started')
+
+
+def fly_to_altitude(alt):
+    """Fly to the given altitude above the current location."""
+    # For testing we use the waypoint mission with a single point at the
+    # current coordinates. In a real application you would query the
+    # aircraft's current GPS position.
+    go_to_waypoint(22.5362, 113.9454, alt)

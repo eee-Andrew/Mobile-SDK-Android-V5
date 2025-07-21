@@ -16,7 +16,7 @@ public class MainActivity extends AppCompatActivity {
             Python.start(new AndroidPlatform(this));
         }
         Python py = Python.getInstance();
-        py.getModule("drone_control").callAttr("go_to_waypoint",
-                22.5362, 113.9454, 20.0);
+        // For initial testing, simply fly to a set altitude using Python
+        py.getModule("drone_control").callAttr("fly_to_altitude", 20.0);
     }
 }
