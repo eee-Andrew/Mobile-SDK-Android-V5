@@ -95,6 +95,10 @@ This project uses Gradle 7.6 which requires Java 17. Make sure JDK 17 is install
 
 The sample application previously included Chaquopy to run Python code. All Python support has been removed so the project now builds purely with Java and Kotlin sources.
 
+If you retain compileSdk 34 while using Android Gradle plugin 7.4, add the line
+`android.suppressUnsupportedCompileSdk=34` to `gradle.properties` to silence
+the unsupported compileSdk warning.
+
 
 ## Integration
 
