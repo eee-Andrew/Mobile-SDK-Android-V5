@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         target.setMaxSpeed(10);
         target.setSecurityTakeoffHeight(20);
 
-        IntelligentFlightManager.getInstance().flyToMissionManager.startMission(target, null,
+        IntelligentFlightManager.getInstance().getFlyToMissionManager().startMission(target, null,
             new CommonCallbacks.CompletionCallback() {
                 @Override
                 public void onSuccess() {
