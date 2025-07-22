@@ -89,6 +89,11 @@ Sample module:
   The stream uses the camera's zoom lens so changes to zoom ratio are reflected in the video.
  - Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
 
+## Development Environment
+
+This project uses Gradle 7.6 which requires Java 17. Make sure JDK 17 is installed and selected before building the sample apps.
+
+
 ## Integration
 
 For further detail on how to integrate the DJI Android SDK into your Android Studio project, please check the tutorial:
