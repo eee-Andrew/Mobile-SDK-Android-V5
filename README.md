@@ -134,3 +134,8 @@ For further detail on how to integrate the DJI Android SDK into your Android Stu
 You can get support from DJI with the following method:
 
 - Post questions in DJI Developer Forums: [**DEVELOPER SUPPORT**](https://djisdksupport.zendesk.com/hc/en-us/community/topics)
+## Simple Waypoint Mission
+
+`MainActivity` provides a helper method `startWaypointMission()` which
+creates a single-waypoint KMZ file and executes it via `WaypointMissionManager`.
+Edit the latitude, longitude and altitude passed to this method in `onCreate` to send the aircraft to your desired location.
