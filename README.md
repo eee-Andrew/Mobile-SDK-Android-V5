@@ -93,6 +93,8 @@ Sample module:
 
 This project uses Gradle 7.6 which requires Java 17. Make sure JDK 17 is installed and selected before building the sample apps.
 
+The sample application previously included Chaquopy to run Python code. All Python support has been removed so the project now builds purely with Java and Kotlin sources.
+
 
 ## Integration
 
