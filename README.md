@@ -134,8 +134,11 @@ For further detail on how to integrate the DJI Android SDK into your Android Stu
 You can get support from DJI with the following method:
 
 - Post questions in DJI Developer Forums: [**DEVELOPER SUPPORT**](https://djisdksupport.zendesk.com/hc/en-us/community/topics)
-## Simple Waypoint Mission
+## Simple Fly-To Mission
 
-`MainActivity` provides a helper method `startWaypointMission()` which
-creates a single-waypoint KMZ file and executes it via `WaypointMissionManager`.
-Edit the latitude, longitude and altitude passed to this method in `onCreate` to send the aircraft to your desired location.
+`MainActivity` now demonstrates how to start a Fly-To mission when the app
+launches. The sample sends the aircraft to latitude **21.44**, longitude
+**44.33** at an altitude of **128&nbsp;m** using `IntelligentFlightManager`.
+Adjust these coordinates in `onCreate()` if you wish to fly elsewhere. After the
+aircraft reaches the target you can run your own Python script to control the
+gimbal, then call `returnHome()` to land at the home point.
