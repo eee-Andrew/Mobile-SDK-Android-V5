@@ -21,7 +21,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d("MainActivity", "App started");
-        startFlyToMission(21.44, 44.33, 128.0);
+        startFlyToMission(41.1380417,24.9127228,10.0);
+
     }
 
     private void startFlyToMission(double latitude, double longitude, double altitude) {
