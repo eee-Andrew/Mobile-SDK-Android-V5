@@ -141,4 +141,6 @@ launches. The sample sends the aircraft to latitude **21.44**, longitude
 **44.33** at an altitude of **128&nbsp;m** using `IntelligentFlightManager`.
 Adjust these coordinates in `onCreate()` if you wish to fly elsewhere. After the
 aircraft reaches the target you can run your own Python script to control the
-gimbal, then call `returnHome()` to land at the home point.
+gimbal, then call `returnHome()` to land at the home point. The sample also
+enables manual override: moving the RC sticks will cancel the Fly-To mission if
+supported by your SDK version.

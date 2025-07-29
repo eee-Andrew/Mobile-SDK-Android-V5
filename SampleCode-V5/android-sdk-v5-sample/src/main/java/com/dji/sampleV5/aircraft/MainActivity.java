@@ -27,8 +27,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void startFlyToMission(double latitude, double longitude, double altitude) {
         FlyToTarget target = new FlyToTarget();
-        // Allow manual override with the sticks if something goes wrong
-        target.setExitOnRCInput(true); // bail out on any RC stick movement
+        // Allow manual override with the sticks if something goes wrong.
+        // Older SDKs may not implement setExitOnRCInput so call it via
+        // reflection and ignore failures.
+        try {
+            java.lang.reflect.Method m =
+                target.getClass().getMethod("setExitOnRCInput", boolean.class);
+            m.invoke(target, true);
+        } catch (Exception e) {
+            Log.w("MainActivity", "setExitOnRCInput not supported: " + e.getMessage());
+        }
         LocationCoordinate3D location = new LocationCoordinate3D(latitude, longitude, altitude);
         target.setTargetLocation(location);
         target.setMaxSpeed(10);
