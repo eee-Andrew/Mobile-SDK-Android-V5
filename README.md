@@ -89,6 +89,17 @@ Sample module:
   The stream uses the camera's zoom lens so changes to zoom ratio are reflected in the video.
  - Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
 
+## Development Environment
+
+This project uses Gradle 7.6 which requires Java 17. Make sure JDK 17 is installed and selected before building the sample apps.
+
+The sample application previously included Chaquopy to run Python code. All Python support has been removed so the project now builds purely with Java and Kotlin sources.
+
+If you retain compileSdk 34 while using Android Gradle plugin 7.4, add the line
+`android.suppressUnsupportedCompileSdk=34` to `gradle.properties` to silence
+the unsupported compileSdk warning.
+
+
 ## Integration
 
 For further detail on how to integrate the DJI Android SDK into your Android Studio project, please check the tutorial:
@@ -123,3 +134,13 @@ For further detail on how to integrate the DJI Android SDK into your Android Stu
 You can get support from DJI with the following method:
 
 - Post questions in DJI Developer Forums: [**DEVELOPER SUPPORT**](https://djisdksupport.zendesk.com/hc/en-us/community/topics)
+## Simple Fly-To Mission
+
+`MainActivity` now demonstrates how to start a Fly-To mission when the app
+launches. The sample sends the aircraft to latitude **21.44**, longitude
+**44.33** at an altitude of **128&nbsp;m** using `IntelligentFlightManager`.
+Adjust these coordinates in `onCreate()` if you wish to fly elsewhere. After the
+aircraft reaches the target you can run your own Python script to control the
+gimbal, then call `returnHome()` to land at the home point. The sample also
+enables manual override: moving the RC sticks will cancel the Fly-To mission if
+supported by your SDK version.
