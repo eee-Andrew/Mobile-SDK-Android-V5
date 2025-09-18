@@ -22,7 +22,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Log.d("MainActivity", "App started");
         // Fly to the requested location when the app launches
-        startFlyToMission(41.1380417, 24.9127228, 10.0);
+        startFlyToMission(45.010450512460835, 19.2130288324275, 100.0);
     }
 
     private void startFlyToMission(double latitude, double longitude, double altitude) {

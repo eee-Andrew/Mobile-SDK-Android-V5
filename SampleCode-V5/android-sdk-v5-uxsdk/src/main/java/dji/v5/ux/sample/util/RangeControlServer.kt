@@ -8,6 +8,7 @@ import dji.sdk.keyvalue.value.common.ComponentIndexType
 import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotationMode
+import dji.sdk.keyvalue.value.gimbal.GimbalMode
 import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
 import dji.sdk.keyvalue.value.camera.CameraVideoStreamSourceType
 import java.io.BufferedReader
@@ -41,6 +42,9 @@ object RangeControlServer {
         server = ServerSocket(port)
         // switch the live stream to the zoom lens so zoom ratios are visible
         setZoomLens()
+        // allow the gimbal to yaw independently of the aircraft so only the
+        // camera rotates when commands arrive from the client
+        setGimbalModeFree()
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
         // poll the laser measurement so latest values are available
@@ -117,6 +121,7 @@ object RangeControlServer {
     }
 
     private fun setOrientationAndZoom(yaw: Double, pitch: Double, zoom: Double) {
+        setGimbalModeFree()
         val rotateKey = KeyTools.createKey(GimbalKey.KeyRotateByAngle, ComponentIndexType.LEFT_OR_MAIN)
         val rotation = GimbalAngleRotation().apply {
             mode = GimbalAngleRotationMode.ABSOLUTE_ANGLE
@@ -132,6 +137,11 @@ object RangeControlServer {
             CameraLensType.CAMERA_LENS_ZOOM
         )
         KeyManager.getInstance().setValue(zoomKey, zoom, null)
+    }
+
+    private fun setGimbalModeFree() {
+        val key = KeyTools.createKey(GimbalKey.KeyGimbalMode, ComponentIndexType.LEFT_OR_MAIN)
+        KeyManager.getInstance().setValue(key, GimbalMode.FREE, null)
     }
 
     private fun getLaserInfo(): LaserMeasureInformation? {
