@@ -2,11 +2,13 @@ import csv
 import json
 import os
 import socket
+import struct
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional
+from fractions import Fraction
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
@@ -48,6 +50,12 @@ QUEUE_API_TOKEN = os.getenv("QUEUE_API_TOKEN", "DUTH_SPATRA")
 QUEUE_API_ENABLED = os.getenv("QUEUE_API_ENABLED", "1") != "0"
 QUEUE_API_TIMEOUT = float(os.getenv("QUEUE_API_TIMEOUT", "10"))
 
+# Image capture configuration
+CAPTURE_DIR = Path(
+    os.getenv("CAPTURE_DIR")
+    or (Path(__file__).resolve().parent / "captures")
+).resolve()
+
 
 @dataclass
 class CameraPose:
@@ -75,6 +83,7 @@ class DetectionResult:
     pitch: float
     zoom: float
     range_m: Optional[float] = None
+    image_path: Optional[Path] = None
 
     def as_payload(self) -> Dict[str, float]:
         return {
@@ -243,6 +252,180 @@ def parse_response(resp: str) -> Dict[str, float]:
     return data
 
 
+def fetch_position(sock: socket.socket) -> Optional[Dict[str, float]]:
+    """Request the current drone position from the remote controller."""
+
+    sock.sendall(b"GET\n")
+    resp = sock.recv(1024).decode().strip()
+    if not resp:
+        print("Empty response received when requesting position data")
+        return None
+    data = parse_response(resp)
+    lat = data.get("LAT") or data.get("LATITUDE")
+    lon = data.get("LON") or data.get("LONGITUDE")
+    if lat is None or lon is None:
+        print("Coordinates missing in response:", resp)
+        return None
+    data["latitude"] = lat
+    data["longitude"] = lon
+    return data
+
+
+def _decimal_to_dms_fractions(value: float) -> List[Fraction]:
+    """Convert a decimal coordinate to EXIF-compatible DMS fractions."""
+
+    abs_value = abs(value)
+    degrees = int(abs_value)
+    minutes_full = (abs_value - degrees) * 60
+    minutes = int(minutes_full)
+    seconds = round((minutes_full - minutes) * 60, 6)
+    return [
+        Fraction(degrees, 1),
+        Fraction(minutes, 1),
+        Fraction(seconds).limit_denominator(1_000_000),
+    ]
+
+
+def _fractions_to_bytes(values: Iterable[Fraction]) -> bytes:
+    """Pack Fraction values into EXIF rational byte representation."""
+
+    packed = []
+    for value in values:
+        numerator = value.numerator
+        denominator = value.denominator if value.denominator else 1
+        packed.append(struct.pack("<II", numerator, denominator))
+    return b"".join(packed)
+
+
+def _build_gps_exif_bytes(latitude: float, longitude: float) -> bytes:
+    """Create an EXIF payload containing GPS metadata."""
+
+    lat_ref = b"N\x00" if latitude >= 0 else b"S\x00"
+    lon_ref = b"E\x00" if longitude >= 0 else b"W\x00"
+
+    lat_rationals = _fractions_to_bytes(_decimal_to_dms_fractions(latitude))
+    lon_rationals = _fractions_to_bytes(_decimal_to_dms_fractions(longitude))
+
+    tiff_header = b"II*\x00\x08\x00\x00\x00"
+    ifd0_count = struct.pack("<H", 1)
+    ifd0_entry = struct.pack("<HHI", 0x8825, 4, 1)
+    gps_ifd_offset = len(tiff_header) + len(ifd0_count) + 12 + 4
+    ifd0_entry += struct.pack("<I", gps_ifd_offset)
+    ifd0 = ifd0_count + ifd0_entry + struct.pack("<I", 0)
+
+    gps_entries_metadata = [
+        (1, 2, 2, lat_ref.ljust(4, b"\x00"), None),
+        (2, 5, 3, lat_rationals, "lat"),
+        (3, 2, 2, lon_ref.ljust(4, b"\x00"), None),
+        (4, 5, 3, lon_rationals, "lon"),
+    ]
+
+    gps_entries: List[bytes] = []
+    gps_data = b""
+    gps_ifd_header_len = 2 + len(gps_entries_metadata) * 12 + 4
+    gps_data_offset = gps_ifd_offset + gps_ifd_header_len
+    for tag, type_id, count, value_bytes, data_label in gps_entries_metadata:
+        if type_id == 5:
+            entry = struct.pack("<HHI", tag, type_id, count)
+            entry += struct.pack("<I", gps_data_offset)
+            gps_entries.append(entry)
+            gps_data += value_bytes
+            gps_data_offset += len(value_bytes)
+        else:
+            entry = struct.pack("<HHI", tag, type_id, count)
+            entry += value_bytes[:4]
+            gps_entries.append(entry)
+    gps_ifd = (
+        struct.pack("<H", len(gps_entries_metadata))
+        + b"".join(gps_entries)
+        + struct.pack("<I", 0)
+        + gps_data
+    )
+
+    exif_payload = b"Exif\x00\x00" + tiff_header + ifd0 + gps_ifd
+    return exif_payload
+
+
+def _strip_existing_exif(image_bytes: bytes) -> bytes:
+    """Remove existing EXIF APP1 segments from a JPEG byte sequence."""
+
+    idx = 2
+    while idx + 4 <= len(image_bytes):
+        if image_bytes[idx] != 0xFF:
+            break
+        marker = image_bytes[idx : idx + 2]
+        if marker == b"\xff\xda":
+            break
+        length = struct.unpack(">H", image_bytes[idx + 2 : idx + 4])[0]
+        if marker == b"\xff\xe1":
+            segment_end = idx + 2 + length
+            segment_data = image_bytes[idx + 4 : segment_end]
+            if segment_data.startswith(b"Exif\x00\x00"):
+                image_bytes = image_bytes[:idx] + image_bytes[segment_end:]
+                continue
+        idx += 2 + length
+    return image_bytes
+
+
+def _insert_exif_segment(image_bytes: bytes, exif_payload: bytes) -> bytes:
+    """Insert an EXIF APP1 segment into a JPEG byte sequence."""
+
+    image_bytes = _strip_existing_exif(image_bytes)
+    if not image_bytes.startswith(b"\xff\xd8"):
+        raise ValueError("Only JPEG images are supported for EXIF tagging")
+
+    segment = b"\xff\xe1" + struct.pack(">H", len(exif_payload) + 2) + exif_payload
+    insert_pos = 2
+    idx = 2
+    while idx + 4 <= len(image_bytes):
+        if image_bytes[idx] != 0xFF:
+            break
+        marker = image_bytes[idx : idx + 2]
+        if marker == b"\xff\xe0":
+            length = struct.unpack(">H", image_bytes[idx + 2 : idx + 4])[0]
+            idx += 2 + length
+            insert_pos = idx
+            continue
+        if marker in {b"\xff\xe1", b"\xff\xda"}:
+            break
+        break
+    return image_bytes[:insert_pos] + segment + image_bytes[insert_pos:]
+
+
+def save_geotagged_image(
+    frame,
+    pose_index: int,
+    measurement_time: datetime,
+    latitude: float,
+    longitude: float,
+    detected: bool,
+) -> Path:
+    """Persist a captured frame to disk and embed GPS EXIF metadata."""
+
+    try:
+        CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise RuntimeError(f"Failed to create capture directory {CAPTURE_DIR}: {exc}")
+
+    timestamp_str = measurement_time.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    label = "truck" if detected else "no-truck"
+    filename = f"pose_{pose_index:04d}_{label}_{timestamp_str}.jpg"
+    output_path = CAPTURE_DIR / filename
+
+    if not cv2.imwrite(str(output_path), frame):
+        raise RuntimeError(f"Failed to write captured image to {output_path}")
+
+    try:
+        exif_payload = _build_gps_exif_bytes(latitude, longitude)
+        image_bytes = output_path.read_bytes()
+        tagged = _insert_exif_segment(image_bytes, exif_payload)
+        output_path.write_bytes(tagged)
+    except Exception as exc:  # noqa: BLE001 - best effort geotagging
+        print(f"Failed to embed EXIF metadata for {output_path}: {exc}")
+
+    return output_path
+
+
 def detect_truck(model: YOLO, frame) -> bool:
     """Return True if a truck is detected in the provided frame."""
 
@@ -321,6 +504,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
 
                     time.sleep(POSE_SETTLE_SECONDS)
 
+                    last_frame = None
                     detected = False
                     start_time = time.time()
                     while time.time() - start_time <= DETECTION_TIMEOUT_SECONDS:
@@ -329,16 +513,28 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                             print("Failed to read frame from RTSP stream")
                             break
 
+                        last_frame = frame
+
                         if detect_truck(model, frame):
                             measurement_time = datetime.now(timezone.utc)
-                            sock.sendall(b"GET\n")
-                            resp = sock.recv(1024).decode().strip()
-                            data = parse_response(resp)
-                            lat = data.get("LAT") or data.get("LATITUDE")
-                            lon = data.get("LON") or data.get("LONGITUDE")
-                            if lat is None or lon is None:
-                                print("Truck detected but coordinates missing in response:", resp)
-                                break
+                            position = fetch_position(sock)
+                            if position is None:
+                                print(
+                                    "Truck detected but coordinates unavailable; "
+                                    "retrying position fetch."
+                                )
+                                continue
+
+                            lat = position["latitude"]
+                            lon = position["longitude"]
+                            image_path = save_geotagged_image(
+                                frame,
+                                pose_index=index,
+                                measurement_time=measurement_time,
+                                latitude=lat,
+                                longitude=lon,
+                                detected=True,
+                            )
 
                             detection = DetectionResult(
                                 pose_index=index,
@@ -348,12 +544,14 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                 yaw=pose.yaw,
                                 pitch=pose.pitch,
                                 zoom=pose.zoom if pose.zoom is not None else DEFAULT_ZOOM,
-                                range_m=data.get("RANGE"),
+                                range_m=position.get("RANGE"),
+                                image_path=image_path,
                             )
                             detections.append(detection)
                             print(
                                 "Detected truck:",
                                 f"range {detection.range_m} m lat {lat} lon {lon}",
+                                f"image {image_path}",
                             )
                             detected = True
                             break
@@ -367,7 +565,28 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                         cv2.waitKey(1)
 
                     if not detected:
-                        print(f"No truck detected at pose {index}")
+                        if last_frame is not None:
+                            position = fetch_position(sock)
+                            if position is None:
+                                print(
+                                    f"No truck detected at pose {index} and "
+                                    "coordinates were unavailable"
+                                )
+                            else:
+                                measurement_time = datetime.now(timezone.utc)
+                                image_path = save_geotagged_image(
+                                    last_frame,
+                                    pose_index=index,
+                                    measurement_time=measurement_time,
+                                    latitude=position["latitude"],
+                                    longitude=position["longitude"],
+                                    detected=False,
+                                )
+                                print(
+                                    f"No truck detected at pose {index}; saved image {image_path}"
+                                )
+                        else:
+                            print(f"No truck detected at pose {index} (no frame captured)")
 
                     time.sleep(BETWEEN_POSE_PAUSE_SECONDS)
             finally:
