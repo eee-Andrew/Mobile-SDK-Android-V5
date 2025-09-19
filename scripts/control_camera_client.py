@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 from fractions import Fraction
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
@@ -55,6 +55,86 @@ CAPTURE_DIR = Path(
     os.getenv("CAPTURE_DIR")
     or (Path(__file__).resolve().parent / "captures")
 ).resolve()
+
+# Pose sequence selection
+POSE_SEQUENCE_SOURCE = os.getenv("POSE_SEQUENCE_SOURCE", "preset").strip().lower()
+
+# Preset gimbal orientations extracted from the flight log. A per-entry ``zoom``
+# field is left as ``None`` so that operators can fill in the appropriate zoom
+# level when it becomes available.
+GIMBAL_PHOTOS: List[Dict[str, Optional[float]]] = [
+    {"pitch": -6.3, "yaw": -81.5, "yaw360": 278.5, "zoom": None},
+    {"pitch": -6.3, "yaw": -81.5, "yaw360": 278.5, "zoom": None},
+    {"pitch": -8.0, "yaw": -80.5, "yaw360": 279.5, "zoom": None},
+    {"pitch": -8.0, "yaw": -80.5, "yaw360": 279.5, "zoom": None},
+    {"pitch": -10.4, "yaw": -79.8, "yaw360": 280.2, "zoom": None},
+    {"pitch": -10.4, "yaw": -79.8, "yaw360": 280.2, "zoom": None},
+    {"pitch": -13.7, "yaw": -78.8, "yaw360": 281.2, "zoom": None},
+    {"pitch": -13.7, "yaw": -78.8, "yaw360": 281.2, "zoom": None},
+    {"pitch": -17.3, "yaw": -77.5, "yaw360": 282.5, "zoom": None},
+    {"pitch": -17.3, "yaw": -77.5, "yaw360": 282.5, "zoom": None},
+    {"pitch": -23.2, "yaw": -73.6, "yaw360": 286.4, "zoom": None},
+    {"pitch": -23.2, "yaw": -73.6, "yaw360": 286.4, "zoom": None},
+    {"pitch": -24.8, "yaw": -73.6, "yaw360": 286.4, "zoom": None},
+    {"pitch": -31.4, "yaw": -68.6, "yaw360": 291.4, "zoom": None},
+    {"pitch": -31.4, "yaw": -68.6, "yaw360": 291.4, "zoom": None},
+    {"pitch": -44.3, "yaw": -57.3, "yaw360": 302.7, "zoom": None},
+    {"pitch": -44.3, "yaw": -57.3, "yaw360": 302.7, "zoom": None},
+    {"pitch": -54.9, "yaw": -37.1, "yaw360": 322.9, "zoom": None},
+    {"pitch": -54.9, "yaw": -37.1, "yaw360": 322.9, "zoom": None},
+    {"pitch": -54.9, "yaw": -34.0, "yaw360": 326.0, "zoom": None},
+    {"pitch": -60.5, "yaw": -10.1, "yaw360": 349.9, "zoom": None},
+    {"pitch": -60.5, "yaw": -10.1, "yaw360": 349.9, "zoom": None},
+    {"pitch": -58.9, "yaw": 29.7, "yaw360": 29.7, "zoom": None},
+    {"pitch": -58.9, "yaw": 29.7, "yaw360": 29.7, "zoom": None},
+    {"pitch": -35.8, "yaw": 68.7, "yaw360": 68.7, "zoom": None},
+    {"pitch": -35.8, "yaw": 68.7, "yaw360": 68.7, "zoom": None},
+    {"pitch": -25.1, "yaw": 76.3, "yaw360": 76.3, "zoom": None},
+    {"pitch": -25.1, "yaw": 76.3, "yaw360": 76.3, "zoom": None},
+    {"pitch": -16.7, "yaw": 81.8, "yaw360": 81.8, "zoom": None},
+    {"pitch": -16.7, "yaw": 81.8, "yaw360": 81.8, "zoom": None},
+    {"pitch": -10.8, "yaw": 84.6, "yaw360": 84.6, "zoom": None},
+    {"pitch": -10.5, "yaw": 84.6, "yaw360": 84.6, "zoom": None},
+    {"pitch": -8.7, "yaw": 85.2, "yaw360": 85.2, "zoom": None},
+    {"pitch": -8.7, "yaw": 85.2, "yaw360": 85.2, "zoom": None},
+    {"pitch": -7.1, "yaw": 85.3, "yaw360": 85.3, "zoom": None},
+    {"pitch": -7.1, "yaw": 85.3, "yaw360": 85.3, "zoom": None},
+    {"pitch": -6.0, "yaw": 85.3, "yaw360": 85.3, "zoom": None},
+    {"pitch": -6.0, "yaw": 85.3, "yaw360": 85.3, "zoom": None},
+    {"pitch": -5.6, "yaw": 85.0, "yaw360": 85.0, "zoom": None},
+    {"pitch": -5.0, "yaw": 84.8, "yaw360": 84.8, "zoom": None},
+    {"pitch": -5.0, "yaw": 84.8, "yaw360": 84.8, "zoom": None},
+    {"pitch": -4.4, "yaw": 84.4, "yaw360": 84.4, "zoom": None},
+    {"pitch": -4.4, "yaw": 84.4, "yaw360": 84.4, "zoom": None},
+    {"pitch": -4.0, "yaw": 83.9, "yaw360": 83.9, "zoom": None},
+    {"pitch": -4.0, "yaw": 83.9, "yaw360": 83.9, "zoom": None},
+    {"pitch": -3.7, "yaw": 83.4, "yaw360": 83.4, "zoom": None},
+    {"pitch": -3.7, "yaw": 83.4, "yaw360": 83.4, "zoom": None},
+    {"pitch": -3.2, "yaw": 82.3, "yaw360": 82.3, "zoom": None},
+    {"pitch": -3.0, "yaw": 81.8, "yaw360": 81.8, "zoom": None},
+    {"pitch": -3.0, "yaw": 81.8, "yaw360": 81.8, "zoom": None},
+    {"pitch": -2.8, "yaw": 81.4, "yaw360": 81.4, "zoom": None},
+    {"pitch": -2.8, "yaw": 81.4, "yaw360": 81.4, "zoom": None},
+    {"pitch": -2.7, "yaw": 81.0, "yaw360": 81.0, "zoom": None},
+    {"pitch": -2.7, "yaw": 81.0, "yaw360": 81.0, "zoom": None},
+    {"pitch": -2.6, "yaw": 80.6, "yaw360": 80.6, "zoom": None},
+    {"pitch": -2.6, "yaw": 80.6, "yaw360": 80.6, "zoom": None},
+    {"pitch": -2.5, "yaw": 80.2, "yaw360": 80.2, "zoom": None},
+    {"pitch": -2.5, "yaw": 80.2, "yaw360": 80.2, "zoom": None},
+    {"pitch": -2.2, "yaw": 80.0, "yaw360": 80.0, "zoom": None},
+    {"pitch": -2.2, "yaw": 80.0, "yaw360": 80.0, "zoom": None},
+    {"pitch": -2.2, "yaw": 79.8, "yaw360": 79.8, "zoom": None},
+    {"pitch": -2.2, "yaw": 79.8, "yaw360": 79.8, "zoom": None},
+    {"pitch": -2.1, "yaw": 79.5, "yaw360": 79.5, "zoom": None},
+    {"pitch": -2.1, "yaw": 79.5, "yaw360": 79.5, "zoom": None},
+    {"pitch": -2.1, "yaw": 79.5, "yaw360": 79.5, "zoom": None},
+    {"pitch": -2.0, "yaw": 79.2, "yaw360": 79.2, "zoom": None},
+    {"pitch": -2.0, "yaw": 79.2, "yaw360": 79.2, "zoom": None},
+    {"pitch": -1.9, "yaw": 79.1, "yaw360": 79.1, "zoom": None},
+    {"pitch": -1.9, "yaw": 79.1, "yaw360": 79.1, "zoom": None},
+    {"pitch": -1.8, "yaw": 79.2, "yaw360": 79.2, "zoom": None},
+    {"pitch": -1.8, "yaw": 79.2, "yaw360": 79.2, "zoom": None},
+]
 
 
 @dataclass
@@ -183,7 +263,7 @@ def _extract_zoom_value(
     return None
 
 
-def load_camera_poses(path: Path, limit: Optional[int] = None) -> List[CameraPose]:
+def load_camera_poses_from_log(path: Path, limit: Optional[int] = None) -> List[CameraPose]:
     """Parse the flight record and build an ordered list of gimbal poses."""
 
     if not path.exists():
@@ -235,6 +315,56 @@ def load_camera_poses(path: Path, limit: Optional[int] = None) -> List[CameraPos
                     break
             prev_photo = current_photo
     return poses
+
+
+def build_preset_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
+    """Convert the predefined gimbal photo list into CameraPose objects."""
+
+    entries = GIMBAL_PHOTOS if limit is None else GIMBAL_PHOTOS[:limit]
+    poses: List[CameraPose] = []
+    for entry in entries:
+        pitch = entry.get("pitch")
+        yaw = entry.get("yaw")
+        if pitch is None or yaw is None:
+            continue
+
+        zoom_value = entry.get("zoom")
+        zoom: Optional[float]
+        if zoom_value in {None, ""}:
+            zoom = None
+        else:
+            try:
+                zoom = float(zoom_value)
+            except (TypeError, ValueError):
+                print(f"Invalid zoom value in GIMBAL_PHOTOS entry: {zoom_value}")
+                zoom = None
+
+        poses.append(
+            CameraPose(
+                timestamp=None,
+                pitch=float(pitch),
+                yaw=float(yaw),
+                zoom=zoom,
+            )
+        )
+    return poses
+
+
+def resolve_camera_pose_sequence(limit: Optional[int] = None) -> Tuple[List[CameraPose], str]:
+    """Return the configured camera pose sequence and a description."""
+
+    source = POSE_SEQUENCE_SOURCE
+    if source == "log":
+        poses = load_camera_poses_from_log(LOG_PATH, limit=limit)
+        return poses, f"flight log {LOG_PATH}"
+
+    if source != "preset":
+        print(
+            f"Unknown POSE_SEQUENCE_SOURCE '{source}', using preset gimbal photo list."
+        )
+
+    poses = build_preset_camera_poses(limit=limit)
+    return poses, "preset gimbal photo list"
 
 
 def parse_response(resp: str) -> Dict[str, float]:
@@ -603,8 +733,8 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
 
 def main() -> None:
     limit = MAX_POSES if MAX_POSES > 0 else None
-    poses = load_camera_poses(LOG_PATH, limit=limit)
-    print(f"Loaded {len(poses)} camera poses from {LOG_PATH}")
+    poses, description = resolve_camera_pose_sequence(limit)
+    print(f"Loaded {len(poses)} camera poses from {description}")
     process_camera_poses(poses)
 
 
