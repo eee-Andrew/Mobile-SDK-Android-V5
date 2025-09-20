@@ -20,6 +20,7 @@ import java.io.OutputStreamWriter
 import java.net.ServerSocket
 import java.net.Socket
 import kotlin.concurrent.thread
+import kotlin.math.abs
 
 /**
  * Simple TCP server to receive camera control commands and send range finder data.
@@ -178,10 +179,26 @@ object RangeControlServer {
     private fun clampZoom(value: Double): Double {
         val range = zoomRange
         if (range != null) {
-            val min = range.min?.toDouble()
-            val max = range.max?.toDouble()
-            if (min != null && max != null && min <= max) {
-                return value.coerceIn(min, max)
+            val gears = range.gears
+            if (gears != null && gears.isNotEmpty()) {
+                val minGear = gears.minOrNull()
+                val maxGear = gears.maxOrNull()
+                if (minGear != null && maxGear != null && minGear <= maxGear) {
+                    val bounded = value.coerceIn(minGear.toDouble(), maxGear.toDouble())
+                    if (range.isContinuous) {
+                        return bounded
+                    }
+                    var closest = gears[0]
+                    var smallestDelta = abs(gears[0].toDouble() - bounded)
+                    for (gear in gears) {
+                        val delta = abs(gear.toDouble() - bounded)
+                        if (delta < smallestDelta) {
+                            smallestDelta = delta
+                            closest = gear
+                        }
+                    }
+                    return closest.toDouble()
+                }
             }
         }
         return value.coerceIn(1.0, 200.0)
