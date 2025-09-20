@@ -1,15 +1,18 @@
 package dji.v5.ux.sample.util
 
+import android.os.Handler
+import android.os.Looper
 import dji.v5.manager.KeyManager
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.key.GimbalKey
 import dji.sdk.keyvalue.key.CameraKey
-import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.sdk.keyvalue.value.camera.CameraVideoStreamSourceType
+import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
+import dji.sdk.keyvalue.value.camera.ZoomRatiosRange
 import dji.sdk.keyvalue.value.common.CameraLensType
+import dji.sdk.keyvalue.value.common.ComponentIndexType
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotationMode
-import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
-import dji.sdk.keyvalue.value.camera.CameraVideoStreamSourceType
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
@@ -32,6 +35,19 @@ object RangeControlServer {
         ComponentIndexType.LEFT_OR_MAIN,
         CameraLensType.CAMERA_LENS_ZOOM
     )
+    private val zoomKey = KeyTools.createCameraKey(
+        CameraKey.KeyCameraZoomRatios,
+        ComponentIndexType.LEFT_OR_MAIN,
+        CameraLensType.CAMERA_LENS_ZOOM
+    )
+    private val zoomRangeKey = KeyTools.createCameraKey(
+        CameraKey.KeyCameraZoomRatiosRange,
+        ComponentIndexType.LEFT_OR_MAIN,
+        CameraLensType.CAMERA_LENS_ZOOM
+    )
+    private val zoomHandler = Handler(Looper.getMainLooper())
+    @Volatile
+    private var zoomRange: ZoomRatiosRange? = null
     private var pollingThread: Thread? = null
 
     @JvmStatic
@@ -43,6 +59,17 @@ object RangeControlServer {
         setZoomLens()
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
+        // fetch zoom range in the background so we can clamp incoming values
+        thread(start = true) {
+            while (!Thread.currentThread().isInterrupted && zoomRange == null) {
+                val range = KeyManager.getInstance().getValue<ZoomRatiosRange>(zoomRangeKey)
+                if (range != null) {
+                    zoomRange = range
+                    break
+                }
+                Thread.sleep(500)
+            }
+        }
         // poll the laser measurement so latest values are available
         pollingThread = thread(start = true) {
             while (!server!!.isClosed) {
@@ -78,6 +105,12 @@ object RangeControlServer {
                             val pitch = parts[2].toDoubleOrNull() ?: 0.0
                             val zoom = parts[3].toDoubleOrNull() ?: 1.0
                             setOrientationAndZoom(yaw, pitch, zoom)
+                        }
+                        "ZOOM" -> if (parts.size >= 2) {
+                            val zoom = parts[1].toDoubleOrNull()
+                            if (zoom != null) {
+                                applyZoom(zoom)
+                            }
                         }
                         "GET" -> {
                             val info = getLaserInfo()
@@ -125,13 +158,33 @@ object RangeControlServer {
             duration = 2.0
         }
         KeyManager.getInstance().performAction(rotateKey, rotation, null)
+        scheduleZoomUpdate(zoom)
+    }
 
-        val zoomKey = KeyTools.createCameraKey(
-            CameraKey.KeyCameraZoomRatios,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
-        )
-        KeyManager.getInstance().setValue(zoomKey, zoom, null)
+    private fun scheduleZoomUpdate(requestedZoom: Double) {
+        val clamped = clampZoom(requestedZoom)
+        zoomHandler.postDelayed({ setZoomInternal(clamped) }, 200)
+    }
+
+    private fun applyZoom(requestedZoom: Double) {
+        val clamped = clampZoom(requestedZoom)
+        zoomHandler.post { setZoomInternal(clamped) }
+    }
+
+    private fun setZoomInternal(value: Double) {
+        KeyManager.getInstance().setValue(zoomKey, value, null)
+    }
+
+    private fun clampZoom(value: Double): Double {
+        val range = zoomRange
+        if (range != null) {
+            val min = range.min?.toDouble()
+            val max = range.max?.toDouble()
+            if (min != null && max != null && min <= max) {
+                return value.coerceIn(min, max)
+            }
+        }
+        return value.coerceIn(1.0, 200.0)
     }
 
     private fun getLaserInfo(): LaserMeasureInformation? {
