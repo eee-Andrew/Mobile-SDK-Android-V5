@@ -625,14 +625,17 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                 return
             try:
                 for index, pose in enumerate(poses):
+                    zoom_value = pose.zoom if pose.zoom is not None else DEFAULT_ZOOM
                     command = pose.command(DEFAULT_ZOOM)
                     sock.sendall(command.encode())
                     print(
                         f"Pose {index}: yaw={pose.yaw:.2f} pitch={pose.pitch:.2f} "
-                        f"zoom={(pose.zoom if pose.zoom is not None else DEFAULT_ZOOM):.2f}"
+                        f"zoom={zoom_value:.2f}"
                     )
 
                     time.sleep(POSE_SETTLE_SECONDS)
+                    zoom_command = f"ZOOM {zoom_value:.2f}\n"
+                    sock.sendall(zoom_command.encode())
 
                     last_frame = None
                     detected = False
@@ -673,7 +676,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                 longitude=lon,
                                 yaw=pose.yaw,
                                 pitch=pose.pitch,
-                                zoom=pose.zoom if pose.zoom is not None else DEFAULT_ZOOM,
+                                zoom=zoom_value,
                                 range_m=position.get("RANGE"),
                                 image_path=image_path,
                             )
