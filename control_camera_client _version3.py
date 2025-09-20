@@ -267,6 +267,22 @@ PHOTO_COORDS: List[Tuple[float, float]] = [
     (45.048349850651064, 19.184661496441176),
 ]
 
+
+def wrap_to_180(angle: float) -> float:
+    """Normalize an angle to the [-180, 180] range."""
+
+    wrapped = (angle + 180.0) % 360.0 - 180.0
+    if wrapped <= -180.0:
+        wrapped += 360.0
+    return wrapped
+
+
+def normalise_heading(angle: float) -> float:
+    """Normalize an angle to the [0, 360) range."""
+
+    return angle % 360.0
+
+
 @dataclass
 class CameraPose:
     """A single gimbal pose extracted from the flight record."""
@@ -275,13 +291,23 @@ class CameraPose:
     pitch: float
     yaw: float
     zoom: Optional[float] = None
+    absolute_yaw: Optional[float] = None
 
     def effective_zoom(self, default_zoom: float) -> float:
         return self.zoom if self.zoom is not None else default_zoom
 
-    def command(self, default_zoom: float) -> str:
+    def resolve_relative_yaw(self, aircraft_yaw: Optional[float]) -> float:
+        if self.absolute_yaw is not None and aircraft_yaw is not None:
+            return wrap_to_180(self.absolute_yaw - aircraft_yaw)
+        return self.yaw
+
+    def command(
+        self, default_zoom: float, aircraft_yaw: Optional[float] = None
+    ) -> Tuple[str, float, float]:
         zoom_value = self.effective_zoom(default_zoom)
-        return f"SET {self.yaw:.2f} {self.pitch:.2f} {zoom_value:.2f}\n"
+        yaw_value = self.resolve_relative_yaw(aircraft_yaw)
+        command = f"SET {yaw_value:.2f} {self.pitch:.2f} {zoom_value:.2f}\n"
+        return command, yaw_value, zoom_value
 
 
 @dataclass
@@ -295,6 +321,7 @@ class DetectionResult:
     yaw: float
     pitch: float
     zoom: float
+    absolute_yaw: Optional[float] = None
     range_m: Optional[float] = None
     image_path: Optional[Path] = None
     # ===== NEW: gate publishing so we don't double-post =====
@@ -432,6 +459,11 @@ def load_camera_poses_from_log(path: Path, limit: Optional[int] = None) -> List[
         except ValueError as exc:
             raise RuntimeError("Expected columns were not found in the CSV") from exc
 
+        try:
+            idx_yaw360 = header.index("GIMBAL.yaw [360]")
+        except ValueError:
+            idx_yaw360 = None
+
         prev_photo = False
         for pose_index, row in enumerate(reader):
             current_photo = row[idx_photo] == "True"
@@ -444,8 +476,25 @@ def load_camera_poses_from_log(path: Path, limit: Optional[int] = None) -> List[
                     prev_photo = current_photo
                     continue
 
+                absolute_yaw = None
+                if idx_yaw360 is not None:
+                    yaw360_value = row[idx_yaw360]
+                    if yaw360_value:
+                        try:
+                            absolute_yaw = float(yaw360_value)
+                        except ValueError:
+                            absolute_yaw = None
+
                 zoom = _extract_zoom_value(header, row, overrides, len(poses))
-                poses.append(CameraPose(timestamp=timestamp, pitch=pitch, yaw=yaw, zoom=zoom))
+                poses.append(
+                    CameraPose(
+                        timestamp=timestamp,
+                        pitch=pitch,
+                        yaw=yaw,
+                        zoom=zoom,
+                        absolute_yaw=absolute_yaw,
+                    )
+                )
                 if limit and len(poses) >= limit:
                     break
             prev_photo = current_photo
@@ -491,12 +540,26 @@ def build_preset_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
                 print(f"Invalid zoom value in GIMBAL_PHOTOS entry: {zoom_value}")
                 zoom = None
 
+        absolute_value = entry.get("yaw360")
+        absolute_yaw: Optional[float]
+        if absolute_value in {None, ""}:
+            absolute_yaw = None
+        else:
+            try:
+                absolute_yaw = float(absolute_value)
+            except (TypeError, ValueError):
+                print(
+                    f"Invalid yaw360 value in GIMBAL_PHOTOS entry: {absolute_value}"
+                )
+                absolute_yaw = None
+
         poses.append(
             CameraPose(
                 timestamp=None,
                 pitch=float(pitch),
                 yaw=float(yaw),
                 zoom=zoom,
+                absolute_yaw=absolute_yaw,
             )
         )
     return poses
@@ -541,20 +604,49 @@ def parse_response(resp: str) -> Dict[str, float]:
 def fetch_position(sock: socket.socket) -> Optional[Dict[str, float]]:
     """Request the current drone position from the remote controller."""
 
-    sock.sendall(b"GET\n")
-    resp = sock.recv(1024).decode().strip()
-    if not resp:
-        print("Empty response received when requesting position data")
+    state = request_controller_state(sock, "position data")
+    if state is None:
         return None
-    data = parse_response(resp)
+    data, raw = state
     lat = data.get("LAT") or data.get("LATITUDE")
     lon = data.get("LON") or data.get("LONGITUDE")
     if lat is None or lon is None:
-        print("Coordinates missing in response:", resp)
+        print("Coordinates missing in response:", raw)
         return None
     data["latitude"] = lat
     data["longitude"] = lon
     return data
+
+
+def request_controller_state(
+    sock: socket.socket, context: str
+) -> Optional[Tuple[Dict[str, float], str]]:
+    """Send a GET command and return the parsed response and raw text."""
+
+    try:
+        sock.sendall(b"GET\n")
+    except OSError as exc:
+        print(f"Failed to request {context}: {exc}")
+        return None
+
+    try:
+        resp_bytes = sock.recv(1024)
+    except OSError as exc:
+        print(f"Failed to read response for {context}: {exc}")
+        return None
+
+    try:
+        resp = resp_bytes.decode().strip()
+    except UnicodeDecodeError:
+        print(f"Failed to decode response for {context}: {resp_bytes!r}")
+        return None
+
+    if not resp:
+        print(f"Empty response received when requesting {context}")
+        return None
+
+    data = parse_response(resp)
+    return data, resp
 
 
 def _decimal_to_dms_fractions(value: float) -> List[Fraction]:
@@ -863,13 +955,58 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
 
             try:
                 for index, pose in enumerate(poses):
-                    zoom_value = pose.effective_zoom(DEFAULT_ZOOM)
-                    command = pose.command(DEFAULT_ZOOM)
-                    sock.sendall(command.encode())
-                    print(
-                        f"Pose {index}: yaw={pose.yaw:.2f} pitch={pose.pitch:.2f} "
-                        f"zoom={zoom_value:.2f}"
+                    aircraft_yaw: Optional[float] = None
+                    aircraft_heading: Optional[float] = None
+                    raw_attitude: Optional[str] = None
+                    if pose.absolute_yaw is not None:
+                        state = request_controller_state(sock, "aircraft attitude")
+                        if state is None:
+                            print(
+                                f"Pose {index}: failed to fetch aircraft yaw; "
+                                "using stored relative yaw."
+                            )
+                        else:
+                            attitude_data, raw_attitude = state
+                            aircraft_yaw = attitude_data.get("YAW")
+                            if aircraft_yaw is None:
+                                heading_value = attitude_data.get("HEADING") or attitude_data.get("HDG")
+                                if heading_value is not None:
+                                    aircraft_yaw = wrap_to_180(heading_value)
+                            if aircraft_yaw is not None:
+                                aircraft_heading = normalise_heading(aircraft_yaw)
+                            else:
+                                print(
+                                    f"Pose {index}: controller response missing yaw/heading; "
+                                    f"raw='{raw_attitude}'. Using stored relative yaw."
+                                )
+
+                    command_text, command_yaw, zoom_value = pose.command(
+                        DEFAULT_ZOOM, aircraft_yaw
                     )
+                    sock.sendall(command_text.encode())
+
+                    desired_heading = (
+                        normalise_heading(pose.absolute_yaw)
+                        if pose.absolute_yaw is not None
+                        else None
+                    )
+                    if desired_heading is not None:
+                        if aircraft_heading is not None:
+                            print(
+                                f"Pose {index}: yaw={command_yaw:.2f} pitch={pose.pitch:.2f} "
+                                f"zoom={zoom_value:.2f} (abs={desired_heading:.2f}°, "
+                                f"aircraft={aircraft_heading:.2f}°)"
+                            )
+                        else:
+                            print(
+                                f"Pose {index}: yaw={command_yaw:.2f} pitch={pose.pitch:.2f} "
+                                f"zoom={zoom_value:.2f} (abs={desired_heading:.2f}°, aircraft=unknown)"
+                            )
+                    else:
+                        print(
+                            f"Pose {index}: yaw={command_yaw:.2f} pitch={pose.pitch:.2f} "
+                            f"zoom={zoom_value:.2f}"
+                        )
 
                     # Wait after gimbal move, then throw away first frames
                     time.sleep(POSE_SETTLE_SECONDS)
@@ -902,6 +1039,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
 
                             # ===== Use linked coordinates (NOT MSDK) if available
                             coord = get_linked_coord_for_pose(index)
+                            range_value: Optional[float] = None
                             if coord is not None:
                                 lat, lon = coord
                             else:
@@ -915,6 +1053,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                     continue
                                 lat = position["latitude"]
                                 lon = position["longitude"]
+                                range_value = position.get("RANGE")
 
                             image_path = save_geotagged_image(
                                 frame,
@@ -930,10 +1069,11 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                 measurement_time=measurement_time,
                                 latitude=lat,
                                 longitude=lon,
-                                yaw=pose.yaw,
+                                yaw=command_yaw,
                                 pitch=pose.pitch,
                                 zoom=zoom_value,
-                                range_m=None,  # position.get("RANGE") if you want, but not required
+                                absolute_yaw=pose.absolute_yaw,
+                                range_m=range_value,
                                 image_path=image_path,
                             )
                             detections.append(detection)

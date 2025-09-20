@@ -6,11 +6,13 @@ import dji.v5.manager.KeyManager
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.key.GimbalKey
 import dji.sdk.keyvalue.key.CameraKey
+import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.value.camera.CameraVideoStreamSourceType
 import dji.sdk.keyvalue.value.camera.LaserMeasureInformation
 import dji.sdk.keyvalue.value.camera.ZoomRatiosRange
 import dji.sdk.keyvalue.value.common.CameraLensType
 import dji.sdk.keyvalue.value.common.ComponentIndexType
+import dji.sdk.keyvalue.value.common.Attitude
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotation
 import dji.sdk.keyvalue.value.gimbal.GimbalAngleRotationMode
 import java.io.BufferedReader
@@ -27,6 +29,7 @@ import kotlin.math.abs
  * Commands:
  *   SET <yaw> <pitch> <zoom>  - set gimbal orientation and zoom ratio
  *   GET                      - reply with RANGE <distance> LAT <lat> LON <lon>
+ *                               ALT <alt> TX <x> TY <y> YAW <yaw> HEADING <heading>
  */
 object RangeControlServer {
     private var server: ServerSocket? = null
@@ -46,6 +49,7 @@ object RangeControlServer {
         ComponentIndexType.LEFT_OR_MAIN,
         CameraLensType.CAMERA_LENS_ZOOM
     )
+    private val attitudeKey = KeyTools.createKey(FlightControllerKey.KeyAircraftAttitude)
     private val zoomHandler = Handler(Looper.getMainLooper())
     @Volatile
     private var zoomRange: ZoomRatiosRange? = null
@@ -123,7 +127,10 @@ object RangeControlServer {
                             val point = info?.targetPoint
                             val tx = point?.x ?: 0.0
                             val ty = point?.y ?: 0.0
-                            writer.write("RANGE $distance LAT $lat LON $lon ALT $alt TX $tx TY $ty\n")
+                            val attitude = getAircraftAttitude()
+                            val yaw = attitude?.yaw ?: Double.NaN
+                            val heading = if (yaw.isNaN()) Double.NaN else normalizeHeading(yaw)
+                            writer.write("RANGE $distance LAT $lat LON $lon ALT $alt TX $tx TY $ty YAW $yaw HEADING $heading\n")
                             writer.flush()
                         }
                     }
@@ -206,6 +213,18 @@ object RangeControlServer {
 
     private fun getLaserInfo(): LaserMeasureInformation? {
         return laserInfo
+    }
+
+    private fun getAircraftAttitude(): Attitude? {
+        return KeyManager.getInstance().getValue(attitudeKey)
+    }
+
+    private fun normalizeHeading(yaw: Double): Double {
+        var heading = yaw % 360.0
+        if (heading < 0) {
+            heading += 360.0
+        }
+        return heading
     }
 
     @JvmStatic
