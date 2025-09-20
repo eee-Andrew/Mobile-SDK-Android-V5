@@ -39,7 +39,7 @@ PORT = int(os.getenv("RC_PORT", "8989"))
 # ===============================
 RTSP_URL = os.getenv(
     "RC_RTSP_URL",
-    "rtsp://user:192.168.0.160@10.123.230.106:8554/streaming/live/1",
+    "rtsp://user:192.168.0.160@10.123.230.106:8554/streaming/live/2",
 )
 
 # Flight log used to replay gimbal poses
@@ -61,6 +61,22 @@ BETWEEN_POSE_PAUSE_SECONDS = float(
 )
 DISPLAY_PREVIEW = os.getenv("DISPLAY_PREVIEW", "0") == "1"
 
+try:
+    _zoom_repeat = int(os.getenv("ZOOM_COMMAND_REPEAT", "2"))
+except (TypeError, ValueError):
+    _zoom_repeat = 2
+ZOOM_COMMAND_REPEAT = max(1, _zoom_repeat)
+
+try:
+    ZOOM_COMMAND_INTERVAL = float(os.getenv("ZOOM_COMMAND_INTERVAL", "0.4"))
+except (TypeError, ValueError):
+    ZOOM_COMMAND_INTERVAL = 0.4
+
+try:
+    ZOOM_SETTLE_SECONDS = float(os.getenv("ZOOM_SETTLE_SECONDS", "0.5"))
+except (TypeError, ValueError):
+    ZOOM_SETTLE_SECONDS = 0.5
+
 # ===== NEW: detection thresholds =====
 TRUCK_MIN_COUNT = int(os.getenv("TRUCK_MIN_COUNT", "2"))          # need ≥2 trucks
 TRUCK_CONF_THRESHOLD = float(os.getenv("TRUCK_CONF_THRESHOLD", "0.25"))
@@ -81,6 +97,14 @@ CAPTURE_DIR = Path(
 
 # Pose sequence selection
 POSE_SEQUENCE_SOURCE = os.getenv("POSE_SEQUENCE_SOURCE", "preset").strip().lower()
+
+# Example manual positions as (zoom, pitch, yaw). These are used when
+# POSE_SEQUENCE_SOURCE=manual.
+MANUAL_POSITIONS: List[Tuple[float, float, float]] = [
+    (20.0, -8.0, -80.5),
+    (10.0, -25.1, 76.3),
+    (5.0, -35.8, 68.7),
+]
 
 # ---------------------------
 # GIMBAL_PHOTOS: keep ONLY the dict entries (removed raw lat,lon lines that broke Python)
@@ -252,8 +276,11 @@ class CameraPose:
     yaw: float
     zoom: Optional[float] = None
 
+    def effective_zoom(self, default_zoom: float) -> float:
+        return self.zoom if self.zoom is not None else default_zoom
+
     def command(self, default_zoom: float) -> str:
-        zoom_value = self.zoom if self.zoom is not None else default_zoom
+        zoom_value = self.effective_zoom(default_zoom)
         return f"SET {self.yaw:.2f} {self.pitch:.2f} {zoom_value:.2f}\n"
 
 
@@ -425,6 +452,23 @@ def load_camera_poses_from_log(path: Path, limit: Optional[int] = None) -> List[
     return poses
 
 
+def build_manual_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
+    """Create camera poses from the hard-coded MANUAL_POSITIONS list."""
+
+    entries = MANUAL_POSITIONS if limit is None else MANUAL_POSITIONS[:limit]
+    poses: List[CameraPose] = []
+    for zoom, pitch, yaw in entries:
+        poses.append(
+            CameraPose(
+                timestamp=None,
+                pitch=float(pitch),
+                yaw=float(yaw),
+                zoom=float(zoom),
+            )
+        )
+    return poses
+
+
 def build_preset_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
     """Convert the predefined gimbal photo list into CameraPose objects."""
 
@@ -465,6 +509,10 @@ def resolve_camera_pose_sequence(limit: Optional[int] = None) -> Tuple[List[Came
     if source == "log":
         poses = load_camera_poses_from_log(LOG_PATH, limit=limit)
         return poses, f"flight log {LOG_PATH}"
+
+    if source == "manual":
+        poses = build_manual_camera_poses(limit=limit)
+        return poses, "manual POSITIONS list"
 
     if source != "preset":
         print(
@@ -733,6 +781,17 @@ def publish_detection(result: DetectionResult) -> bool:
     return False
 
 
+def apply_zoom_commands(sock: socket.socket, zoom_value: float) -> None:
+    """Send one or more ZOOM commands to enforce the requested magnification."""
+
+    command = f"ZOOM {zoom_value:.2f}\n".encode()
+    repeats = ZOOM_COMMAND_REPEAT
+    for attempt in range(repeats):
+        sock.sendall(command)
+        if attempt + 1 < repeats and ZOOM_COMMAND_INTERVAL > 0:
+            time.sleep(ZOOM_COMMAND_INTERVAL)
+
+
 def process_camera_poses(poses: Iterable[CameraPose]) -> None:
     """Replay each gimbal pose, run detection, and publish results."""
 
@@ -788,7 +847,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
             # ===============================
             # STEP 4: Reconnect on broken frames (helper)
             # ===============================
-            def reopen_capture():
+            def reopen_capture(current_zoom: float):
                 nonlocal cap
                 try:
                     cap.release()
@@ -797,18 +856,26 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                 time.sleep(0.5)
                 cap = _open_capture()
                 read_stable_frame(cap, warmup=60)
+                apply_zoom_commands(sock, current_zoom)
+                if ZOOM_SETTLE_SECONDS > 0:
+                    time.sleep(ZOOM_SETTLE_SECONDS)
+                read_stable_frame(cap, warmup=30)
 
             try:
                 for index, pose in enumerate(poses):
+                    zoom_value = pose.effective_zoom(DEFAULT_ZOOM)
                     command = pose.command(DEFAULT_ZOOM)
                     sock.sendall(command.encode())
                     print(
                         f"Pose {index}: yaw={pose.yaw:.2f} pitch={pose.pitch:.2f} "
-                        f"zoom={(pose.zoom if pose.zoom is not None else DEFAULT_ZOOM):.2f}"
+                        f"zoom={zoom_value:.2f}"
                     )
 
                     # Wait after gimbal move, then throw away first frames
                     time.sleep(POSE_SETTLE_SECONDS)
+                    apply_zoom_commands(sock, zoom_value)
+                    if ZOOM_SETTLE_SECONDS > 0:
+                        time.sleep(ZOOM_SETTLE_SECONDS)
                     read_stable_frame(cap, warmup=60)
 
                     last_frame = None
@@ -820,7 +887,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                         ret, frame = cap.read()
                         if not ret or frame is None or frame.size == 0:
                             print("Failed to read frame from RTSP stream; reopening…")
-                            reopen_capture()
+                            reopen_capture(zoom_value)
                             ret, frame = cap.read()
                             if not ret or frame is None or frame.size == 0:
                                 print("Still failing after reopen.")
@@ -865,7 +932,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                 longitude=lon,
                                 yaw=pose.yaw,
                                 pitch=pose.pitch,
-                                zoom=pose.zoom if pose.zoom is not None else DEFAULT_ZOOM,
+                                zoom=zoom_value,
                                 range_m=None,  # position.get("RANGE") if you want, but not required
                                 image_path=image_path,
                             )
@@ -875,6 +942,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                             print(
                                 f"Detected {n_trucks} trucks:",
                                 f"lat {lat} lon {lon}",
+                                f"zoom {zoom_value:.2f}",
                                 f"image {image_path}",
                             )
                             break  # positive; no need to keep scanning
@@ -894,7 +962,7 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                             position = fetch_position(sock)
                             if position is None:
                                 print(
-                                    f"No trucks detected at pose {index} and "
+                                    f"No trucks detected at pose {index} (zoom={zoom_value:.2f}) and "
                                     "coordinates were unavailable"
                                 )
                             else:
@@ -908,10 +976,14 @@ def process_camera_poses(poses: Iterable[CameraPose]) -> None:
                                     detected=False,
                                 )
                                 print(
-                                    f"No trucks detected at pose {index}; saved image {image_path}"
+                                    f"No trucks detected at pose {index}; "
+                                    f"zoom={zoom_value:.2f}; saved image {image_path}"
                                 )
                         else:
-                            print(f"No trucks detected at pose {index} (no frame captured)")
+                            print(
+                                f"No trucks detected at pose {index} "
+                                f"(zoom={zoom_value:.2f}, no frame captured)"
+                            )
 
                     # Track per-pose result for the gating logic
                     has_trucks.append(pose_has_trucks)
