@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from fractions import Fraction
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
@@ -110,62 +110,62 @@ MANUAL_POSITIONS: List[Tuple[float, float, float]] = [
 # GIMBAL_PHOTOS: keep ONLY the dict entries (removed raw lat,lon lines that broke Python)
 # ---------------------------
 GIMBAL_PHOTOS = [
-    {"pitch": -6.3,  "yaw": -90.5, "yaw360": 283, "zoom": 35},   # pose 0
-    {"pitch": -8.0,  "yaw": -80.5, "yaw360": 285.5, "zoom": 30},   # pose 1
+    {"pitch": -6.3,  "yaw": -90.5, "yaw360": 283, "zoom": 6.0},    # pose 0
+    {"pitch": -8.0,  "yaw": -80.5, "yaw360": 285.5, "zoom": 7.5},  # pose 1
 
-    {"pitch": -9.4, "yaw": -80.8, "yaw360": 285, "zoom": 20},   # pose 2
-    {"pitch": -13.7, "yaw": -78.8, "yaw360": 285.5, "zoom": 10},   # pose 3
+    {"pitch": -9.4, "yaw": -80.8, "yaw360": 285, "zoom": 9.0},     # pose 2
+    {"pitch": -13.7, "yaw": -78.8, "yaw360": 285.5, "zoom": 11.0}, # pose 3
 
-    {"pitch": -17.3, "yaw": -77.5, "yaw360": 285.5, "zoom": 10},   # pose 4
-    {"pitch": -23.2, "yaw": -75.6, "yaw360": 286.4, "zoom": 5},    # pose 5
+    {"pitch": -17.3, "yaw": -77.5, "yaw360": 285.5, "zoom": 12.5}, # pose 4
+    {"pitch": -23.2, "yaw": -75.6, "yaw360": 286.4, "zoom": 14.0}, # pose 5
 
-    {"pitch": -24.8, "yaw": -70.6, "yaw360": 290.4, "zoom": 5},    # pose 6
-    {"pitch": -31.4, "yaw": -68.6, "yaw360": 291.4, "zoom": 2},    # pose 7
+    {"pitch": -24.8, "yaw": -70.6, "yaw360": 290.4, "zoom": 15.5}, # pose 6
+    {"pitch": -31.4, "yaw": -68.6, "yaw360": 291.4, "zoom": 17.0}, # pose 7
 
-    {"pitch": -44.3, "yaw": -57.3, "yaw360": 302.7, "zoom": 2},    # pose 8
-    {"pitch": -54.9, "yaw": -37.1, "yaw360": 322.9, "zoom": 2},    # pose 9
+    {"pitch": -44.3, "yaw": -57.3, "yaw360": 302.7, "zoom": 18.5}, # pose 8
+    {"pitch": -54.9, "yaw": -37.1, "yaw360": 322.9, "zoom": 20.0}, # pose 9
 
-    {"pitch": -57.9, "yaw": -34.0, "yaw360": 326.0, "zoom": 2},    # pose 10
-    {"pitch": -60.5, "yaw": -10.1, "yaw360": 349.9, "zoom": 2},    # pose 11
+    {"pitch": -57.9, "yaw": -34.0, "yaw360": 326.0, "zoom": 22.0}, # pose 10
+    {"pitch": -60.5, "yaw": -10.1, "yaw360": 349.9, "zoom": 24.0}, # pose 11
 
-    {"pitch": -60.9, "yaw": 40.7,  "yaw360": 380.7,  "zoom": 2},    # pose 12
-    {"pitch": -62.9, "yaw": 65.1,  "yaw360": 390.7,  "zoom": 5},    # pose 13
+    {"pitch": -60.9, "yaw": 40.7,  "yaw360": 380.7,  "zoom": 26.0}, # pose 12
+    {"pitch": -62.9, "yaw": 65.1,  "yaw360": 390.7,  "zoom": 28.0}, # pose 13
 
-    {"pitch": -59, "yaw": 76.3,  "yaw360": 405.7,  "zoom": 10},   # pose 14
-    {"pitch": -52, "yaw": 81.8,  "yaw360": 420,  "zoom": 10},   # pose 15
+    {"pitch": -59, "yaw": 76.3,  "yaw360": 405.7,  "zoom": 30.0},  # pose 14
+    {"pitch": -52, "yaw": 81.8,  "yaw360": 420,  "zoom": 32.0},    # pose 15
 
-    {"pitch": -30, "yaw": 84.6,  "yaw360": 440,  "zoom": 20},   # pose 16
-    {"pitch": -25.5, "yaw": 84.6,  "yaw360": 84.6,  "zoom": 20},   # pose 17
+    {"pitch": -30, "yaw": 84.6,  "yaw360": 440,  "zoom": 36.0},    # pose 16
+    {"pitch": -25.5, "yaw": 84.6,  "yaw360": 84.6,  "zoom": 40.0}, # pose 17
 
-    {"pitch": -20,  "yaw": 85.2,  "yaw360": 85.2,  "zoom": 40},   # pose 18
-    {"pitch": -18,  "yaw": 85.3,  "yaw360": 87.3,  "zoom": 40},   # pose 19
+    {"pitch": -20,  "yaw": 85.2,  "yaw360": 85.2,  "zoom": 45.0},  # pose 18
+    {"pitch": -18,  "yaw": 85.3,  "yaw360": 87.3,  "zoom": 50.0},  # pose 19
 
-    {"pitch": -15,  "yaw": 85.3,  "yaw360": 91.3,  "zoom": 40},   # pose 20
-    {"pitch": -13,  "yaw": 85.0,  "yaw360": 92.0,  "zoom": 40},   # pose 21
+    {"pitch": -15,  "yaw": 85.3,  "yaw360": 91.3,  "zoom": 55.0},  # pose 20
+    {"pitch": -13,  "yaw": 85.0,  "yaw360": 92.0,  "zoom": 60.0},  # pose 21
 
-    {"pitch": -12.0,  "yaw": 84.8,  "yaw360": 92.0,  "zoom": 40},   # pose 22
-    {"pitch": -11,  "yaw": 84.4,  "yaw360": 92.0,  "zoom": 80},   # pose 23
+    {"pitch": -12.0,  "yaw": 84.8,  "yaw360": 92.0,  "zoom": 65.0}, # pose 22
+    {"pitch": -11,  "yaw": 84.4,  "yaw360": 92.0,  "zoom": 75.0},  # pose 23
 
-    {"pitch": -10,  "yaw": 83.9,  "yaw360": 92,  "zoom": 80},   # pose 24
-    {"pitch": -9,  "yaw": 83.4,  "yaw360": 92,  "zoom": 80},   # pose 25
+    {"pitch": -10,  "yaw": 83.9,  "yaw360": 92,  "zoom": 85.0},    # pose 24
+    {"pitch": -9,  "yaw": 83.4,  "yaw360": 92,  "zoom": 95.0},     # pose 25
 
-    {"pitch": -8,  "yaw": 82.3,  "yaw360": 94,  "zoom": 80},   # pose 26
-    {"pitch": -7,  "yaw": 81.8,  "yaw360": 94,  "zoom": 80},   # pose 27
+    {"pitch": -8,  "yaw": 82.3,  "yaw360": 94,  "zoom": 105.0},    # pose 26
+    {"pitch": -7,  "yaw": 81.8,  "yaw360": 94,  "zoom": 115.0},    # pose 27
 
-    {"pitch": -6.5,  "yaw": 81.4,  "yaw360": 96,  "zoom": 23},   # pose 28
-    {"pitch": -6,  "yaw": 81.0,  "yaw360": 96,  "zoom": 200},   # pose 29
+    {"pitch": -6.5,  "yaw": 81.4,  "yaw360": 96,  "zoom": 130.0},  # pose 28
+    {"pitch": -6,  "yaw": 81.0,  "yaw360": 96,  "zoom": 145.0},    # pose 29
 
-    {"pitch": -2.6,  "yaw": 80.6,  "yaw360": 80.6,  "zoom": 160},  # pose 30
-    {"pitch": -2.5,  "yaw": 80.2,  "yaw360": 80.2,  "zoom": 160},  # pose 31
+    {"pitch": -2.6,  "yaw": 80.6,  "yaw360": 80.6,  "zoom": 160.0}, # pose 30
+    {"pitch": -2.5,  "yaw": 80.2,  "yaw360": 80.2,  "zoom": 170.0}, # pose 31
 
-    {"pitch": -2.2,  "yaw": 80.0,  "yaw360": 80.0,  "zoom": 160},  # pose 32
-    {"pitch": -2.2,  "yaw": 79.8,  "yaw360": 79.8,  "zoom": 160},  # pose 33
+    {"pitch": -2.2,  "yaw": 80.0,  "yaw360": 80.0,  "zoom": 180.0}, # pose 32
+    {"pitch": -2.2,  "yaw": 79.8,  "yaw360": 79.8,  "zoom": 188.0}, # pose 33
 
-    {"pitch": -2.1,  "yaw": 79.5,  "yaw360": 79.5,  "zoom": 160},  # pose 34
-    {"pitch": -2.0,  "yaw": 79.2,  "yaw360": 79.2,  "zoom": 160},  # pose 35
+    {"pitch": -2.1,  "yaw": 79.5,  "yaw360": 79.5,  "zoom": 193.0}, # pose 34
+    {"pitch": -2.0,  "yaw": 79.2,  "yaw360": 79.2,  "zoom": 196.0}, # pose 35
 
-    {"pitch": -1.9,  "yaw": 79.1,  "yaw360": 79.1,  "zoom": 160},  # pose 36
-    {"pitch": -1.8,  "yaw": 79.2,  "yaw360": 79.2,  "zoom": 160},  # pose 37
+    {"pitch": -1.9,  "yaw": 79.1,  "yaw360": 79.1,  "zoom": 198.0}, # pose 36
+    {"pitch": -1.8,  "yaw": 79.2,  "yaw360": 79.2,  "zoom": 200.0}, # pose 37
 ]
 
 # ---------------------------
@@ -209,6 +209,24 @@ PHOTO_COORDS: List[Tuple[float, float]] = [
     (45.04825424029357, 19.183190936575908),
     (45.048349850651064, 19.184661496441176),
 ]
+
+
+def _coerce_entry_float(value: Any, entry_index: int, field: str) -> Optional[float]:
+    """Convert a raw pose value to float, printing a warning on failure."""
+    if value in {None, ""}:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        value = stripped
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        print(
+            f"Invalid {field} value in GIMBAL_PHOTOS[{entry_index}]: {value!r}"
+        )
+        return None
 
 def wrap_to_180(angle: float) -> float:
     """Normalize an angle to the [-180, 180] range."""
@@ -441,41 +459,52 @@ def build_manual_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
     return poses
 
 def build_preset_camera_poses(limit: Optional[int] = None) -> List[CameraPose]:
-    """
-    Convert the predefined gimbal photo list into CameraPose objects.
-    Use EVERY row 1:1 (no dedup or slicing).
-    """
+    """Convert preset entries (dicts or tuples) into CameraPose objects."""
     raw = GIMBAL_PHOTOS if limit is None else GIMBAL_PHOTOS[:limit]
     entries = raw  # ← use all rows exactly as you wrote them
 
     poses: List[CameraPose] = []
-    for entry in entries:
-        pitch = entry.get("pitch")
-        yaw = entry.get("yaw")
-        if pitch is None or yaw is None:
+    for index, entry in enumerate(entries):
+        zoom: Optional[float] = None
+        pitch: Optional[float] = None
+        yaw: Optional[float] = None
+        absolute_yaw: Optional[float] = None
+
+        if isinstance(entry, dict):
+            pitch = _coerce_entry_float(entry.get("pitch"), index, "pitch")
+            yaw = _coerce_entry_float(entry.get("yaw"), index, "yaw")
+            zoom = _coerce_entry_float(entry.get("zoom"), index, "zoom")
+            absolute_source = entry.get("yaw360")
+            if absolute_source in {None, ""}:
+                absolute_source = entry.get("absolute_yaw")
+            absolute_yaw = _coerce_entry_float(
+                absolute_source, index, "yaw360"
+            )
+        elif isinstance(entry, (list, tuple)):
+            if len(entry) < 3:
+                print(
+                    f"Skipping GIMBAL_PHOTOS[{index}] because it has fewer than 3 "
+                    f"values: {entry!r}"
+                )
+                continue
+            zoom = _coerce_entry_float(entry[0], index, "zoom")
+            pitch = _coerce_entry_float(entry[1], index, "pitch")
+            yaw = _coerce_entry_float(entry[2], index, "yaw")
+            if len(entry) >= 4:
+                absolute_yaw = _coerce_entry_float(entry[3], index, "yaw360")
+        else:
+            print(
+                f"Skipping GIMBAL_PHOTOS[{index}] because type "
+                f"{type(entry).__name__} is unsupported."
+            )
             continue
 
-        # zoom
-        zoom_value = entry.get("zoom")
-        if zoom_value in {None, ""}:
-            zoom: Optional[float] = None
-        else:
-            try:
-                zoom = float(zoom_value)
-            except (TypeError, ValueError):
-                print(f"Invalid zoom value in GIMBAL_PHOTOS entry: {zoom_value}")
-                zoom = None
-
-        # absolute yaw (yaw360)
-        absolute_value = entry.get("yaw360")
-        if absolute_value in {None, ""}:
-            absolute_yaw: Optional[float] = None
-        else:
-            try:
-                absolute_yaw = float(absolute_value)
-            except (TypeError, ValueError):
-                print(f"Invalid yaw360 value in GIMBAL_PHOTOS entry: {absolute_value}")
-                absolute_yaw = None
+        if pitch is None or yaw is None:
+            print(
+                f"Skipping GIMBAL_PHOTOS[{index}] because pitch/yaw could not be "
+                "parsed."
+            )
+            continue
 
         poses.append(
             CameraPose(
