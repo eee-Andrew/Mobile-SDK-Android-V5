@@ -2,6 +2,7 @@ package dji.v5.ux.sample.util
 
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import dji.v5.manager.KeyManager
 import dji.sdk.keyvalue.key.KeyTools
 import dji.sdk.keyvalue.key.GimbalKey
@@ -32,6 +33,9 @@ import kotlin.math.abs
  *                               ALT <alt> TX <x> TY <y> YAW <yaw> HEADING <heading>
  */
 object RangeControlServer {
+    private const val TAG = "RangeControlServer"
+    private const val ZOOM_LENS_RETRY_DELAY_MS = 500L
+    private const val ZOOM_LENS_MAX_ATTEMPTS = 10
     private var server: ServerSocket? = null
     private var laserInfo: LaserMeasureInformation? = null
     private val laserInfoKey = KeyTools.createCameraKey(
@@ -41,6 +45,11 @@ object RangeControlServer {
     )
     private val zoomKey = KeyTools.createCameraKey(
         CameraKey.KeyCameraZoomRatios,
+        ComponentIndexType.LEFT_OR_MAIN,
+        CameraLensType.CAMERA_LENS_ZOOM
+    )
+    private val streamSourceKey = KeyTools.createCameraKey(
+        CameraKey.KeyCameraVideoStreamSource,
         ComponentIndexType.LEFT_OR_MAIN,
         CameraLensType.CAMERA_LENS_ZOOM
     )
@@ -61,7 +70,7 @@ object RangeControlServer {
         if (server != null) return
         server = ServerSocket(port)
         // switch the live stream to the zoom lens so zoom ratios are visible
-        setZoomLens()
+        ensureZoomLensSelected()
         // enable the laser range finder so distance values can be returned
         enableLaserModule()
         // fetch zoom range in the background so we can clamp incoming values
@@ -139,13 +148,21 @@ object RangeControlServer {
         }
     }
 
-    private fun setZoomLens() {
-        val key = KeyTools.createCameraKey(
-            CameraKey.KeyCameraVideoStreamSource,
-            ComponentIndexType.LEFT_OR_MAIN,
-            CameraLensType.CAMERA_LENS_ZOOM
-        )
-        KeyManager.getInstance().setValue(key, CameraVideoStreamSourceType.ZOOM_CAMERA, null)
+    private fun ensureZoomLensSelected(attempt: Int = 0) {
+        val keyManager = KeyManager.getInstance()
+        val current = keyManager.getValue<CameraVideoStreamSourceType>(streamSourceKey)
+        if (current == CameraVideoStreamSourceType.ZOOM_CAMERA) {
+            if (attempt > 0) {
+                Log.i(TAG, "Zoom lens selected after ${attempt + 1} attempts")
+            }
+            return
+        }
+        keyManager.setValue(streamSourceKey, CameraVideoStreamSourceType.ZOOM_CAMERA, null)
+        if (attempt >= ZOOM_LENS_MAX_ATTEMPTS - 1) {
+            Log.w(TAG, "Zoom lens still unavailable after $ZOOM_LENS_MAX_ATTEMPTS attempts (last=$current)")
+            return
+        }
+        zoomHandler.postDelayed({ ensureZoomLensSelected(attempt + 1) }, ZOOM_LENS_RETRY_DELAY_MS)
     }
 
     private fun enableLaserModule() {
@@ -180,6 +197,7 @@ object RangeControlServer {
     }
 
     private fun setZoomInternal(value: Double) {
+        ensureZoomLensSelected()
         KeyManager.getInstance().setValue(zoomKey, value, null)
     }
 
