@@ -76,6 +76,10 @@ fastlane/readme.md
 # Version control
 vcs.xml
 
+# Python artifacts
+__pycache__/
+*.pyc
+
 # lint
 lint/intermediates/
 lint/generated/
