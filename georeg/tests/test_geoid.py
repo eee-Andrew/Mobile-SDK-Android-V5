@@ -1,3 +1,7 @@
+import pytest
+
+pytest.importorskip("numpy")
+
 from georeg.geoid import GeoidModel
 
 

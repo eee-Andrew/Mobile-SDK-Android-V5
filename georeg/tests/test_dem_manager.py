@@ -8,7 +8,7 @@ shapely = pytest.importorskip("shapely")
 from rasterio.transform import from_origin
 box = shapely.geometry.box
 
-from georeg.config import DEMConfig, DEMProviderConfig
+from georeg.config import DEMCacheConfig, DEMConfig, DEMProviderConfig
 from georeg.dem_manager import DEMManager
 
 
@@ -70,12 +70,9 @@ def test_dem_fetch_and_cache(monkeypatch, tmp_path):
     monkeypatch.setattr("georeg.dem_manager.Client", FakeClient)
     monkeypatch.setattr(DEMManager, "_download_cog", lambda self, href: Path(href))
 
-    config = DEMConfig(
-        providers=[DEMProviderConfig(name="test", stac_url="https://example", collection="x")],
-        cache_dir=tmp_path,
-        max_cache_gb=1,
-        buffer_m=1000,
-    )
+    provider = DEMProviderConfig(name="test", stac_url="https://example", collection="x")
+    cache_cfg = DEMCacheConfig(directory=tmp_path, max_bytes=10 * 1024**2, index_file="index.json", http_timeout_sec=5.0)
+    config = DEMConfig(primary=provider, fallbacks=[], cache=cache_cfg, buffer_m=1000)
     dem = DEMManager(config)
     dem.build_corridor([(0.0, 0.0), (0.0, 0.01)])
     dem.ensure_tiles()
