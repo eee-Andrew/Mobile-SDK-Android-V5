@@ -87,7 +87,38 @@ Sample module:
  - H20 camera preview: from the sample's main screen choose **Multi-Video Decoding (CameraStreamManager - New)** to watch the live camera feed.
 - RTSP streaming: the application starts an RTSP server at `rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1` so you can view the feed remotely. Control the gimbal and zoom via the TCP server.
   The stream uses the camera's zoom lens so changes to zoom ratio are reflected in the video.
- - Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
+- Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
+- Autonomous monitoring workflow: `scripts/autonomous_highway_monitor.py` combines the TCP control channel, the RTSP stream, CLIPSeg road detection and YOLO-based truck detection to autonomously pan/tilt/zoom along a highway, divide the roadway into segments, record zoom levels, capture a photo of the last detected truck, and log GPS/range finder telemetry for post-flight analysis. It now geotags the captured frame with the freshest ESP32 GPS sample, can push the JPEG + JSON payload to a ground-station HTTP endpoint, and reads JSONL dumps from the ESP32 offline logger for post-flight reconciliation.
+
+### Autonomous data capture pipeline
+
+- **ESP32 offline logger** (`esp32/offline_logger/offline_logger.ino`): buffers GPS samples once per second in SPIFFS while the drone is outside Wi-Fi coverage. When a landing switch indicates the drone is on the ground, the sketch connects to the configured Wi-Fi network and replays the JSON log over MQTT. See `esp32/README.md` for deployment steps.
+- **Highway monitor (Python)** (`scripts/autonomous_highway_monitor.py`): consumes the RTSP zoom stream, gimbal TCP endpoint, YOLO weights, and the ESP32 JSONL file dumped by the ground station. When the final truck photo is captured, the script embeds GPS/time metadata into the JPEG (via `piexif`) and can upload the image + log bundle to a REST endpoint for archival.
+
+Install the extra Python dependencies before running the monitoring script:
+
+```bash
+pip install ultralytics transformers piexif requests
+```
+
+Run the monitor with RTSP streaming enabled on the Android sample app:
+
+```bash
+python scripts/autonomous_highway_monitor.py \
+  --host 192.168.0.161 --port 8989 \
+  --rtsp rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1 \
+  --yolo-weights best.pt \
+  --esp32-log /path/to/flight_log.jsonl \
+  --ground-station-url https://ground-station/upload \
+  --log-file highway_log.json
+```
+
+If `--ground-station-url` is omitted the script still stores the geotagged JPEG + JSON log locally. The ESP32 JSONL file can be generated automatically by subscribing to the MQTT topic defined in the sketch or by copying `/flight_log.jsonl` over USB.
+
+### Testing
+
+- Python: `pytest tests/test_flight_data_store.py` validates parsing of the ESP32 JSONL cache and photo metadata assembly. `python -m py_compile scripts/autonomous_highway_monitor.py` ensures the script stays syntax-valid.
+- ESP32: follow the checklist in `esp32/README.md` or use `pio test -e esp32` with a connected board to exercise the SPIFFS buffering and MQTT replay logic.
 
 ## Integration
 
