@@ -379,7 +379,7 @@ class HighwayMonitor:
         stream: cv2.VideoCapture,
         log_file: Path,
         segments: int = 6,
-        zoom_levels: Sequence[float] = (2.0, 4.0, 6.0, 8.0),
+        zoom_levels: Sequence[float] = (2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 12.0, 14.0, 16.0, 18.0, 20.0), #maximun digital zoom of DJO H20 camera
     ) -> None:
         self.gimbal = gimbal
         self.road_detector = road_detector
