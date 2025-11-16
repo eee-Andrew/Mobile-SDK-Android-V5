@@ -87,7 +87,8 @@ Sample module:
  - H20 camera preview: from the sample's main screen choose **Multi-Video Decoding (CameraStreamManager - New)** to watch the live camera feed.
 - RTSP streaming: the application starts an RTSP server at `rtsp://user:192.168.0.160@192.168.0.161:8554/streaming/live/1` so you can view the feed remotely. Control the gimbal and zoom via the TCP server.
   The stream uses the camera's zoom lens so changes to zoom ratio are reflected in the video.
- - Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
+- Remote control server: the app listens on TCP port `8989` to receive commands and report laser range finder data. The server polls the sensor every half second so `GET` commands return the latest distance together with latitude, longitude, altitude and target point coordinates. An example Python client that also displays the RTSP feed using OpenCV is available in `scripts/control_camera_client.py`.
+- Autonomous monitoring workflow: `scripts/autonomous_highway_monitor.py` combines the TCP control channel, the RTSP stream, CLIPSeg road detection and YOLO-based truck detection to autonomously pan/tilt/zoom along a highway, divide the roadway into segments, record zoom levels, capture a photo of the last detected truck, and log GPS/range finder telemetry for post-flight analysis.
 
 ## Integration
 
